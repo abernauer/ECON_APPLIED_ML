@@ -28,24 +28,45 @@ Note that the `echo = FALSE` parameter was added to the code chunk to prevent pr
 
 ```{r}
 
-
 library(ggplot2)
 library(lubridate)
 library(purrr)
 library(dplyr)
 library(readr)
 library(tibble)
+library(errorist)
+
+ ethereum_transaction_history <- read_csv("ethereum-historical-data\\EthereumTransactionHistory.csv",
+      col_types = cols(
+        `Date(UTC)` = col_character(),
+        UnixTimeStamp = col_number(), 
+        Value = col_number()
+      ))
+ 
+date_utc <- mdy(ethereum_transaction_history$`Date(UTC)`) 
+
+dat_u_time <- as_datetime(ethereum_transaction_history$UnixTimeStamp, origin = lubridate::origin, tz = "UTC") 
+
+day_of_week <- lubridate::wday(dat_u_time)
 
 
-ethereum_transaction_history <- read_csv("ethereum-historical-data\\EthereumTransactionHistory.csv", na = '#######')
+##%>% select(ethereum_transaction_history, , 'UnixTimeStamp', 'Value')
 
-time_unix <- lubridate::as_date(ethereum_transaction_history$UnixTimeStamp)
 
-day_week <- lubridate::wday(as_date(ethereum_transaction_history$`Date(UTC)`, tz = "UTC", format = NULL))
-##ggplot(data = ethereum_transaction_history, mapping = aes(x = ethereum_transaction_history$`Date(UTC)`, y = ethereum_transaction_history$Value)) +
- ## geom_point()
+
+##select(ethereum_transaction_history, ethereum_transaction_history$`Date(UTC)`)
+time_unix <- lubridate::as_datetime(ethereum_transaction_history$UnixTimeStamp, origin = lubridate::origin, tz = "UTC")
+summary(time_unix)
+##day_week <- lubridate::wday(as_date(ethereum_transaction_history$`Date(UTC)`, tz = "UTC", format = NULL))
+ggplot(data = ethereum_transaction_history, mapping = aes(x = dat_u_time, y = ethereum_transaction_history$Value)) +
+  geom_jitter() 
+ 
   
-  
 
+##summarise(ethereum_transaction_history$`Date(UTC)`)
+
+am_eth <- lubridate::am(time_unix)
+
+summary(am_eth)
 ```
 
