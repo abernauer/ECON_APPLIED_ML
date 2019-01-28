@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, cache=TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -110,9 +110,16 @@ price_plo <- ggplot(df_ether, mapping = aes(day, price))+
 
 price_plo
 
-plt_price_block <- ggplot(df_ether, mapping = aes(transaction_history, price))+
-  geom_area()
+plt_price_transaction <- ggplot(df_ether, mapping = aes(transaction_history, price))+
+  geom_line()
 
 plt_price_block
+
+plt_price_hash <- ggplot(df_ether, mapping = aes(hash_rate, price)) +
+  
+geom_line(colour = "purple")
+plt_price_hash
 ```
+
+
 
