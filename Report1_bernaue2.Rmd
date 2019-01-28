@@ -3,6 +3,8 @@ title: "Project_Report_1"
 author: "Andrew Bernauer"
 date: "January 25, 2019"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -27,7 +29,6 @@ You can also embed plots, for example:
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
 ```{r}
-
 library(ggplot2)
 library(lubridate)
 library(purrr)
@@ -58,15 +59,60 @@ day_of_week <- lubridate::wday(dat_u_time)
 time_unix <- lubridate::as_datetime(ethereum_transaction_history$UnixTimeStamp, origin = lubridate::origin, tz = "UTC")
 summary(time_unix)
 ##day_week <- lubridate::wday(as_date(ethereum_transaction_history$`Date(UTC)`, tz = "UTC", format = NULL))
-ggplot(data = ethereum_transaction_history, mapping = aes(x = dat_u_time, y = ethereum_transaction_history$Value)) +
-  geom_jitter() 
+a_1 <- ggplot(data = ethereum_transaction_history, mapping = aes(dat_u_time, ethereum_transaction_history$Value)) +
+ geom_jitter(width = 0.25, height = 0.25) +
+  stat_smooth(span = 0.4) 
+
+a_1
  
-  
+##ethereum_transaction_history 
 
 ##summarise(ethereum_transaction_history$`Date(UTC)`)
 
 am_eth <- lubridate::am(time_unix)
 
-summary(am_eth)
+month_eth <- lubridate::month(date_utc)
+
+wrap_by <- function(...){
+  facet_wrap(vars(...), labeller = label_both)
+}
+
+#a_1 + wrap_by(month_eth)
+#ether_supply_growth <- read_csv("ethereum-historical-data\\EtherSupplyGrowthChart.csv", col_names = c('date', 'unix_tstamp', 'supply_growth'))
+
+##ether_supply_growth <- read_csv("ethereum-historical-data\\EtherSupplyGrowthChart.csv", col_names = c('date', 'unix_tstamp', 'supply_growth'))
+
+##ether_network_hashrate <- read_csv("ethereum-historical-data\\EthereumNetworkHashRateGrowthRate.csv", col_names = c('date', 'unix_tstamp', 'hashrate'))
+
+##ether_network_hashrate <- read_csv("ethereum-historical-data\\EtherNetworkHashRateGrowthRate.csv", col_names = c('date', 'unix_tstamp', 'hashrate'))
+
+
+
+l_ether <- list(day = day_of_week, month = month_eth, Date = ethereum_transaction_history$`Date(UTC)`, time_stamp = ethereum_transaction_history$UnixTimeStamp, transaction_history = ethereum_transaction_history$Value, hash_rate = EthereumNetworkHashRateGrowthRate$Value, price = EthereumNetworkHashRateGrowthRate$Value, blocksize = EthereumBlockSizeHistory$Value )
+
+
+df_ether <- as_tibble(l_ether)
+
+#summarise_(df_ether)
+mon_plot <- ggplot(df_ether, mapping = aes(month, price))+
+  geom_point() +
+  geom_point(alpha = 0.05) +
+  facet_wrap(vars(day))
+  
+
+
+mon_plot
+
+price_plo <- ggplot(df_ether, mapping = aes(day, price))+
+  geom_point() +
+  facet_wrap(vars(month)) + 
+  geom_smooth(method = lm)
+
+price_plo
+
+plt_price_block <- ggplot(df_ether, mapping = aes(transaction_history, price))+
+  geom_area()
+
+plt_price_block
 ```
 
