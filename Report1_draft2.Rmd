@@ -32,12 +32,14 @@ ether_price <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\
 # creating variable for day  
 day_of_week <- 
   lubridate::mdy(ether_price$`Date(UTC)`) %>%
-  wday( ,label=TRUE)
+  wday( ,label=TRUE) %>%
+  sort()
 
 # creating variable for month
 month_of_year <-
   lubridate::mdy(ether_price$`Date(UTC)`) %>%
-  month( )
+  month( ,label=TRUE) %>%
+  sort()
 
 # construct list of variables to coerce into a tibble
 l_ether <- list( price = ether_price$Value,
@@ -45,35 +47,85 @@ l_ether <- list( price = ether_price$Value,
                  block_size = ethereum_block_size$Value,
                  hash_rate = ethereum_network_hash_rate$Value, 
                  day = day_of_week, 
-                 month = month_of_year)
+                 month = month_of_year,
+                 date_utc = ethereum_network_hash_rate$`Date(UTC)`,
+                 unix_time_stamp = ethereum_network_hash_rate$UnixTimeStamp)
 
 ether_df <- as_tibble(l_ether)
 
  price_plot <- ggplot(ether_df) +
    aes(transaction_history, price) +
    geom_point(colour="purple") + 
-   facet_wrap(~day) +
+   facet_wrap(~month) +
    geom_smooth(colour="yellow", alpha = 0.25) 
 
-
-   
- 
  price_plot +
    scale_x_continuous("Transactions") +
-   scale_y_continuous("Ethereum Price USD($)")
+   scale_y_log10("Ethereum Price USD($)") +
+   ggtitle("Ethereum Price USD($) vs Transactions") 
  
  ggsave("transaction_price.png")
-## price_plot_2 <- ggplot(ether_df) +
- ##  aes(hash_rate, price) +
- #  geom_point() 
+ price_plot_2 <- ggplot(ether_df) +
+  aes(hash_rate, price) +
+  geom_line() 
  
-## price_plot_2
+ price_plot_2
+ 
  price_plot_3 <- ggplot(ether_df) + 
-   aes(transaction_history, price) +
-   geom_point()
+   aes(price) +
+   geom_histogram()
+
+ price_plot_3 
+## price_plot_3 + 
+##   scale_y_log10() +
+##   scale_x_log10() +
+##   facet_wrap(~day) + 
+##   geom_smooth()
+
+ price_plot_4 <- ggplot(ether_df) + 
+   aes(day, price) +
+   geom_line() 
+   
  
- price_plot_3 + 
-   scale_y_log10() +
-   scale_x_log10()
+ price_plot_4
+   
+ price_plot_5 <- ggplot(ether_df) +
+   aes(month, price) +
+   geom_freqpoly(colour ="month") 
+ 
+ price_block_plot <- ggplot(ether_df, mapping = aes(block_size, price)) +
+   geom_point() 
+   
+ 
+ price_block_plot 
+ 
+ price_hash_plot <- ggplot(ether_df, mapping = aes(hash_rate, price)) +
+   geom_area(colour = "purple", fill = "purple")
+ 
+ price_hash_plot
+                              
+   
+  price_box_plot <- ggplot(ether_df) +
+    geom_boxplot(mapping = aes(x=reorder(day, price, FUN = median), y=price)) +
+    scale_y_log10()
+   
+   
+ price_box_plot_2 <- ggplot(ether_df) +
+    geom_boxplot(mapping = aes(x=reorder(month, price, FUN = median), y=price)) +
+    scale_y_log10()
+  
+  
+   
+   ggsave("price_box_plot_day_2.png", plot = price_box_plot)
+   ggsave("price_box_plot_month_2.png", plot = price_box_plot_2)
+
+ price_lin_plot <- ggplot(ether_df, mapping = aes(x=month, y=price)) +
+   geom_point(colour = "purple") + 
+   geom_line(colour = "yellow") +
+   scale_y_log10("log(Etherium price USD)") +
+   scale_x_discrete(labels = c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"))
+ 
+ price_lin_plot
+     
 ```
 
