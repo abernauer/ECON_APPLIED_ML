@@ -1,0 +1,79 @@
+---
+title: "Report1_draft_2"
+author: "Andrew Bernauer"
+date: "January 28, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(scales)
+library(ggplot2)
+library(lubridate)
+library(purrr)
+library(dplyr)
+library(readr)
+library(tibble)
+library(errorist)
+
+ethereum_transaction_history <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumTransactionHistory.csv")
+
+ethereum_block_size <-read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumBlockSizeHistory.csv"
+)
+
+ethereum_network_hash_rate <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumNetworkHashRateGrowthRate.csv")
+
+ether_price <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EtherPriceHistory(USD).csv")
+
+# creating variable for day  
+day_of_week <- 
+  lubridate::mdy(ether_price$`Date(UTC)`) %>%
+  wday( ,label=TRUE)
+
+# creating variable for month
+month_of_year <-
+  lubridate::mdy(ether_price$`Date(UTC)`) %>%
+  month( )
+
+# construct list of variables to coerce into a tibble
+l_ether <- list( price = ether_price$Value,
+                 transaction_history = ethereum_transaction_history$Value,
+                 block_size = ethereum_block_size$Value,
+                 hash_rate = ethereum_network_hash_rate$Value, 
+                 day = day_of_week, 
+                 month = month_of_year)
+
+ether_df <- as_tibble(l_ether)
+
+ price_plot <- ggplot(ether_df) +
+   aes(transaction_history, price) +
+   geom_point(colour="purple") + 
+   facet_wrap(~day) +
+   geom_smooth(colour="yellow", alpha = 0.25) 
+
+
+   
+ 
+ price_plot +
+   scale_x_continuous("Transactions") +
+   scale_y_continuous("Ethereum Price USD($)")
+ 
+ ggsave("transaction_price.png")
+## price_plot_2 <- ggplot(ether_df) +
+ ##  aes(hash_rate, price) +
+ #  geom_point() 
+ 
+## price_plot_2
+ price_plot_3 <- ggplot(ether_df) + 
+   aes(transaction_history, price) +
+   geom_point()
+ 
+ price_plot_3 + 
+   scale_y_log10() +
+   scale_x_log10()
+```
+
