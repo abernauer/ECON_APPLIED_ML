@@ -8,8 +8,16 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+#Introduction 
+For the semester long project I while we attempting to predict 
 
-```{r}
+$f $
+
+
+
+
+```{r, cache=TRUE}
+
 
 library(scales)
 library(ggplot2)
@@ -20,6 +28,7 @@ library(readr)
 library(tibble)
 library(errorist)
 
+#substitute in the path on your machine to files 
 ethereum_transaction_history <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumTransactionHistory.csv")
 
 ethereum_block_size <-read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumBlockSizeHistory.csv"
@@ -127,5 +136,24 @@ ether_df <- as_tibble(l_ether)
  
  price_lin_plot
     
+```
+
+```{r, cache=TRUE}
+
+#summary stats for ethereum price  
+ether_df %>% summarise(mean_price = mean(price), median_price = median(price), sd_price = sd(price), iqr_price = IQR(price), n = n(), mad_price = mad(price), min_price = min(price), max_price = max(price))
+
+#summary stats for ethereum transaction history
+ether_df %>% summarise(mean_transaction_history = mean(transaction_history), median_transaction_history = median(transaction_history), sd_transaction_history = sd(transaction_history), iqr_transaction_history = IQR(transaction_history), n = n(), mad_transaction_history = mad(transaction_history), min_transaction_history = min(transaction_history), max_transaction_history = max(transaction_history))
+
+#summary stats for ethereum block size
+ether_df %>% summarise(mean_block_size = mean(block_size), median_block_size = median(block_size), sd_block_size = sd(block_size), iqr_block_size = IQR(block_size), n = n(), mad_block_size = mad(block_size), min_block_size = min(block_size), max_block_size = max(block_size))
+
+#summary stats for hash rate
+ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = median(hash_rate), sd_hash_rate= sd(hash_rate), iqr_hash_rate = IQR(hash_rate), n = n(), mad_hash_rate = mad(hash_rate), min_hash_rate = min(hash_rate), max_hash_rate = max(hash_rate))
+
+
+
+
 ```
 
