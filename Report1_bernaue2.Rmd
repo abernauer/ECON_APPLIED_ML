@@ -28,7 +28,9 @@ You can also embed plots, for example:
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
 
+
 ```{r}
+
 library(ggplot2)
 library(lubridate)
 library(purrr)
@@ -37,12 +39,12 @@ library(readr)
 library(tibble)
 library(errorist)
 
- ethereum_transaction_history <- read_csv("ethereum-historical-data\\EthereumTransactionHistory.csv",
+ ethereum_transaction_history <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumTransactionHistory.csv",
       col_types = cols(
-        `Date(UTC)` = col_character(),
-        UnixTimeStamp = col_number(), 
-        Value = col_number()
-      ))
+       date = col_character(),
+       UnixTimeStamp = col_number(), 
+       transaction_history = col_number()
+      ), col_names = TRUE, browseEnv(), guess_max = 1002)
  
 date_utc <- mdy(ethereum_transaction_history$`Date(UTC)`) 
 
@@ -52,9 +54,6 @@ day_of_week <- lubridate::wday(dat_u_time)
 
 
 ##%>% select(ethereum_transaction_history, , 'UnixTimeStamp', 'Value')
-
-
-
 ##select(ethereum_transaction_history, ethereum_transaction_history$`Date(UTC)`)
 time_unix <- lubridate::as_datetime(ethereum_transaction_history$UnixTimeStamp, origin = lubridate::origin, tz = "UTC")
 summary(time_unix)
@@ -82,13 +81,13 @@ wrap_by <- function(...){
 
 ##ether_supply_growth <- read_csv("ethereum-historical-data\\EtherSupplyGrowthChart.csv", col_names = c('date', 'unix_tstamp', 'supply_growth'))
 
-##ether_network_hashrate <- read_csv("ethereum-historical-data\\EthereumNetworkHashRateGrowthRate.csv", col_names = c('date', 'unix_tstamp', 'hashrate'))
-
-##ether_network_hashrate <- read_csv("ethereum-historical-data\\EtherNetworkHashRateGrowthRate.csv", col_names = c('date', 'unix_tstamp', 'hashrate'))
 
 
+ether_network_hashrate <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumNetworkHashRateGrowthRate.csv", col_names = c('date', 'unix_tstamp', 'hashrate'), col_types = list(col_date(), col_number(), col_double()), browser())
 
-l_ether <- list(day = day_of_week, month = month_eth, Date = ethereum_transaction_history$`Date(UTC)`, time_stamp = ethereum_transaction_history$UnixTimeStamp, transaction_history = ethereum_transaction_history$Value, hash_rate = EthereumNetworkHashRateGrowthRate$Value, price = EthereumNetworkHashRateGrowthRate$Value, blocksize = EthereumBlockSizeHistory$Value )
+
+
+l_ether <- list(day = day_of_week, month = month_eth, Date = ethereum_transaction_history$`Date(UTC)`, time_stamp = ethereum_transaction_history$UnixTimeStamp, transaction_history = ethereum_transaction_history$Value, hash_rate = EthereumNetworkHashRateGrowthRate$Value, price = EthereumPriceHistory_USD_$value, blocksize = EthereumBlockSizeHistory$Value )
 
 
 df_ether <- as_tibble(l_ether)
@@ -117,8 +116,22 @@ plt_price_block
 
 plt_price_hash <- ggplot(df_ether, mapping = aes(hash_rate, price)) +
   
-geom_line(colour = "purple")
+geom_area(colour = "purple")
 plt_price_hash
+
+
+plt_lin_price <- ggplot(df_ether, mapping = aes(month, price)) +
+  geom_line() + 
+  geom_step()
+
+plt_lin_price
+
+  price_hist  <- ggplot(data = df_ether, aes(price) ) +
+  geom_histogram(binwidth = 1300)
+
+  price_hist
+
+
 ```
 
 
