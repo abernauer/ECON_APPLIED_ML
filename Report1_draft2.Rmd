@@ -5,18 +5,19 @@ date: "January 28, 2019"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+
 #Introduction 
-For the semester long project I while we attempting to predict 
-
-$f $
+For the semester long project I will be attempting to predict the known response variable ethereum price in terms of the predictors: block size, network hash rate growth rate, transactions, day of the week, and month. The project is regression based and not a classification task. Therefore the project will fall under the umbrella of supervised machine learning.    
 
 
 
+$$ethereum price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
 
-```{r, cache=TRUE}
+
+
+
+##Data  
+```{r data carpentry}
 
 
 library(scales)
@@ -52,16 +53,94 @@ month_of_year <-
 
 # construct list of variables to coerce into a tibble
 l_ether <- list( price = ether_price$Value,
-                 transaction_history = ethereum_transaction_history$Value,
-                 block_size = ethereum_block_size$Value,
+                 transaction_history = as.integer(ethereum_transaction_history$Value),
+                 block_size = as.integer(ethereum_block_size$Value),
                  hash_rate = ethereum_network_hash_rate$Value, 
                  day = day_of_week, 
                  month = month_of_year,
-                 date_utc = ethereum_network_hash_rate$`Date(UTC)`,
+                 date_utc = mdy(ethereum_network_hash_rate$`Date(UTC)`),
                  unix_time_stamp = ethereum_network_hash_rate$UnixTimeStamp)
 
 ether_df <- as_tibble(l_ether)
 
+
+```
+
+
+
+###Plots
+```{r price_vs_time}
+ 
+price_history <- ggplot(ether_df) +
+  aes(date_utc, price) +
+  geom_line(color="purple") + 
+  xlab("Year")+
+  ggtitle("Ethereum Price USD over time") + 
+  scale_y_log10() 
+  
+  
+  
+
+ price_history
+```
+
+
+The price doesn't seem move at all significantly until 2016 so I decided to use a log transformation to the y axis. This removed a large amount the visual noise and made the price change overtime more evident. Besides that ethereum price starts to rise from around a dollar price to hovering around the ten dollars between 2016 and 2017. Peaks at a value of 1000 dollars in 2018.   
+
+
+
+
+
+```{r block_size}
+block_history <- ggplot(ether_df) +
+  aes(date_utc, block_size) +
+  geom_line(color ="purple") +
+  scale_y_log10() +
+  xlab("Year") +
+  ylab("Block Size") +
+  ggtitle("Ethereum Block Size Over Time")
+  
+
+block_history
+```
+
+Block size rises exponentially begining in 2017. Prior to this it fluctuates up and down between 1000 and 3000 which might be pointing to autocorrelation. In this same time period it peaks violently at 10000. Reaching a maximum of over 30000 in 2018. Another log tranformation was used in this plot.  
+
+
+
+```{r network hashrate}
+ hashrate_history <- ggplot(ether_df) + 
+  aes(date_utc, hash_rate) +
+  geom_line(color="purple") +
+  scale_y_log10() +
+  xlab("Year") +
+  ylab("Network Hash rate Growth rate") +
+  ggtitle("Ethereum Network Hash rate growth over time")
+
+ hashrate_history
+```
+
+Network hashrate growth blows up exponentially and seems to follow that trend overtime. 
+
+```{r transaction history}
+ transaction_history <- ggplot(ether_df) + 
+  aes(date_utc, transaction_history) +
+  geom_line(color="purple") +
+  xlab("Year") +
+  ylab("Transactions") +
+  scale_y_log10() +
+  ggtitle("Ethereum Transactions over time")
+
+ transaction_history
+```
+
+
+
+
+
+
+
+```{r bonus plot from eda}
  price_plot <- ggplot(ether_df) +
    aes(transaction_history, price) +
    geom_point(colour="purple") + 
@@ -69,79 +148,23 @@ ether_df <- as_tibble(l_ether)
    geom_smooth(colour="yellow", alpha = 0.25) 
 
  price_plot +
-   scale_x_continuous("Transactions") +
+   scale_x_log10("Transactions") +
    scale_y_log10("Ethereum Price USD($)") +
-   ggtitle("Ethereum Price USD($) vs Transactions") 
+   ggtitle("Ethereum Price USD($) vs Transactions facetted by month") 
  
- ggsave("transaction_price.png")
- price_plot_2 <- ggplot(ether_df) +
-  aes(hash_rate, price) +
-  geom_line() 
- 
- price_plot_2
- 
- price_plot_3 <- ggplot(ether_df) + 
-   aes(price) +
-   geom_histogram()
-
- price_plot_3 
-## price_plot_3 + 
-##   scale_y_log10() +
-##   scale_x_log10() +
-##   facet_wrap(~day) + 
-##   geom_smooth()
-
- price_plot_4 <- ggplot(ether_df) + 
-   aes(day, price) +
-   geom_line() 
-   
- 
- price_plot_4
-   
- price_plot_5 <- ggplot(ether_df) +
-   aes(month, price) +
-   geom_freqpoly(colour ="month") 
- 
- price_block_plot <- ggplot(ether_df, mapping = aes(block_size, price)) +
-   geom_point() 
-   
- 
- price_block_plot 
- 
- price_hash_plot <- ggplot(ether_df, mapping = aes(hash_rate, price)) +
-   geom_area(colour = "purple", fill = "purple")
- 
- price_hash_plot
-                              
-   
-  price_box_plot <- ggplot(ether_df) +
-    geom_boxplot(mapping = aes(x=reorder(day, price, FUN = median), y=price)) +
-    scale_y_log10()
-   
-   
- price_box_plot_2 <- ggplot(ether_df) +
-    geom_boxplot(mapping = aes(x=reorder(month, price, FUN = median), y=price)) +
-    scale_y_log10()
-  
-  
-   
-   ggsave("price_box_plot_day_2.png", plot = price_box_plot)
-   ggsave("price_box_plot_month_2.png", plot = price_box_plot_2)
-
- price_lin_plot <- ggplot(ether_df, mapping = aes(x=month, y=price)) +
-   geom_point(colour = "purple") + 
-   geom_line(colour = "yellow") +
-   scale_y_log10("log(Etherium price USD)") +
-   scale_x_discrete(labels = c("Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sept", "Oct", "Nov", "Dec"))
- 
- price_lin_plot
-    
 ```
 
-```{r, cache=TRUE}
+
+
+
+
+
+####Summary Code
+
+```{r tidy_summary_code}
 
 #summary stats for ethereum price  
-ether_df %>% summarise(mean_price = mean(price), median_price = median(price), sd_price = sd(price), iqr_price = IQR(price), n = n(), mad_price = mad(price), min_price = min(price), max_price = max(price))
+ether_df %>% summarise(mean_price = mean(price, na.rm = TRUE), median_price = median(price), sd_price = sd(price), iqr_price = IQR(price), n = n(), mad_price = mad(price), min_price = min(price), max_price = max(price))
 
 #summary stats for ethereum transaction history
 ether_df %>% summarise(mean_transaction_history = mean(transaction_history), median_transaction_history = median(transaction_history), sd_transaction_history = sd(transaction_history), iqr_transaction_history = IQR(transaction_history), n = n(), mad_transaction_history = mad(transaction_history), min_transaction_history = min(transaction_history), max_transaction_history = max(transaction_history))
@@ -156,4 +179,7 @@ ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = medi
 
 
 ```
+
+
+
 
