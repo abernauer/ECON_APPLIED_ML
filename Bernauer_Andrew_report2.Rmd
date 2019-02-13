@@ -259,5 +259,11 @@ knn_model
 
 knn_model$results
 
+y_hat <- predict(knn_model, newdata = ether_df)
+
+predicted <- predict(knn_model, ether_df)
+
+plot(ether_df$price, predicted)
+sqrt(sum(predicted - ether_df$price) ^ 2 / length(ether_df)) / mean(ether_df$price)
 ```
 
