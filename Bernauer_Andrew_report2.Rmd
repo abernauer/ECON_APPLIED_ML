@@ -187,3 +187,77 @@ ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = medi
 
 
 #Report 2
+
+```{r}
+ log_price_log_hash_rate <- ggplot(data = ether_df, aes(hash_rate, price)) +
+  geom_point(color = "purple") 
+  
+
+ log_price_log_hash_rate
+```
+
+```{r}
+ log_price_block_size <- ggplot(data = ether_df, aes(block_size, price)) +
+  geom_point(color = "purple") 
+  
+
+ log_price_block_size
+ 
+poly_reg <- lm(price ~ poly(transaction_history, 5) + poly(block_size, 5) + poly(hash_rate, 5), ether_df )
+
+summary(poly_reg)
+
+library(MASS)
+
+
+
+hist(ether_df$price)
+hist(ether_df$transaction_history)
+hist(ether_df$block_size)
+
+hist(ether_df$hash_rate)
+
+cor(ether_df[1:4])
+
+log_price_trans_hist <- ggplot(data = ether_df, aes(transaction_history, price)) +
+  geom_point(color = "purple") 
+  
+
+ log_price_trans_hist
+ 
+reg_obj <- lm(log(price) ~ log(block_size) + log(transaction_history) + log(hash_rate), data = ether_df,  subset = price > 0)
+ 
+summary(reg_obj)
+```
+
+```{r}
+library(caret)
+
+set.seed(20)
+
+train_index <- createDataPartition(ether_df$price, p = .8, list = FALSE, times = 1)
+
+head(train_index)
+
+ether_df_train <- ether_df[train_index, ]
+
+ether_df_test <- ether_df[-train_index, ]
+
+tr_control <- trainControl(method = "repeatedcv",
+             number = 10,
+             repeats = 3
+             )
+knn_model <-  train(price ~., data = ether_df,
+                    method = "knn",
+                    preProcess = c("center", "scale"), 
+                    trControl = tr_control, 
+                    metric = "RMSE",
+                    tuneLength = 10
+                    )
+
+knn_model
+
+knn_model$results
+
+```
+
