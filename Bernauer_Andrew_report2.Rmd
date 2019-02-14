@@ -2,7 +2,9 @@
 title: "Bernauer_Andrew_report2"
 author: "Andrew Bernauer"
 date: "February 12, 2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -188,49 +190,75 @@ ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = medi
 
 #Report 2
 
-```{r}
- log_price_log_hash_rate <- ggplot(data = ether_df, aes(hash_rate, price)) +
-  geom_point(color = "purple") 
-  
 
- log_price_log_hash_rate
-```
 
-```{r}
- log_price_block_size <- ggplot(data = ether_df, aes(block_size, price)) +
-  geom_point(color = "purple") 
-  
 
- log_price_block_size
+
+#Regressions
+
+
+```{r regressions,}
+#running five regressions 
  
 poly_reg <- lm(price ~ poly(transaction_history, 5) + poly(block_size, 5) + poly(hash_rate, 5), ether_df )
 
-summary(poly_reg)
 
-library(MASS)
-
-
-
-hist(ether_df$price)
-hist(ether_df$transaction_history)
-hist(ether_df$block_size)
-
-hist(ether_df$hash_rate)
-
-cor(ether_df[1:4])
-
-log_price_trans_hist <- ggplot(data = ether_df, aes(transaction_history, price)) +
-  geom_point(color = "purple") 
-  
-
- log_price_trans_hist
- 
 reg_obj <- lm(log(price) ~ log(block_size) + log(transaction_history) + log(hash_rate), data = ether_df,  subset = price > 0)
+
+reg_obj_2 <- lm(log(price) ~ log(transaction_history) + log(hash_rate), data = ether_df, subset = price > 0)
+
+
+reg_obj_3 <- lm(price ~ I(block_size)^2 + sqrt(transaction_history) + hash_rate, data = ether_df)
+
+mols <- lm(price ~ block_size + transaction_history + hash_rate, data = ether_df)
+
+log_ols <- lm(log(price) ~ log(transaction_history), data = ether_df, subset = price > 0)
+
+
  
-summary(reg_obj)
+
 ```
 
-```{r}
+
+
+##Regression Diagnostics 
+
+```{r tidy diagnostics}
+library(broom)
+
+tidy_poly_reg <- poly_reg %>%
+  tidy()
+
+tidy_reg_obj <- reg_obj %>%
+  tidy()
+
+tidy_reg_obj_2 <- reg_obj_2 %>%
+  tidy()
+
+tidy_reg_obj_3 <- reg_obj_3 %>%
+  tidy()
+
+tidy_mols <- mols %>%
+  tidy()
+
+tidy_log_ols <- log_ols %>%
+  tidy()
+
+```
+
+
+
+
+
+##KNN Regression
+
+
+
+
+
+
+
+```{r knn regression}
 library(caret)
 
 set.seed(20)
