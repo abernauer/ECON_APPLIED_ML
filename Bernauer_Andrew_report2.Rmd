@@ -20,7 +20,7 @@ For the semester long project I will be attempting to predict the known response
 
 $$ethereum price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
 
-Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. Block size refers to the size 
+Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. Block size refers to the size of the block chain. Transactions are the number of transactions approved by the ledger. Hash rate is the rate at which the Cryptographic computation takes on the block chain. 
 
 
 
@@ -246,7 +246,9 @@ tidy_reg_obj <- reg_obj %>%
 tidy_reg_obj
 glance(reg_obj)
 ```
-All of the coefficients return p values significant at the .10 cut off level while log block size is close. 
+All of the coefficients return p values significant at the .10 cut off level while log block size is close. The F statistic is significant; however the BIC and AIC below could be lower. 
+
+
 
 
 
@@ -308,12 +310,12 @@ The preceding plot points to the non-linear nature of the data set. A regression
 ```{r}
 tidy_conf_it <- tidy(reg_obj, conf.int = TRUE)
 
-ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
+confin_it_plot <- ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
   geom_point() +
   geom_errorbar(aes(ymin=estimate - 1.96*std.error, ymax=estimate + 1.96*std.error)) +
-  ggtitle("Coefficients with standard errrors")
+  ggtitle("Coefficients with standard errors")
   
-  
+  confin_it_plot
   
  
   
@@ -323,6 +325,12 @@ ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
 The previous graph is misleading due to the scale with a scale adjustment it is more insightful.
 
 
+
+```{r, warning=FALSE}
+confin_it_plot + 
+  scale_y_log10()
+```
+This plot points to a potential issue with logblocksize term not being statistically significant.
 
 
 
