@@ -174,7 +174,7 @@ Ether Price appears to fall into clusters as transactions increase and you isola
 
 #####Summary Code
 
-```{r tidy_summary_code}
+```{r tidy_summary_code, eval=FALSE}
 
 #summary stats for ethereum price  
 ether_df %>% summarise(mean_price = mean(price, na.rm = TRUE), median_price = median(price), sd_price = sd(price), iqr_price = IQR(price), n = n(), mad_price = mad(price), min_price = min(price), max_price = max(price))
@@ -192,6 +192,11 @@ ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = medi
 
 
 ```
+
+#####Conclusion
+
+Ethereum data is quite complex on the surface level before the next report
+
 
 
 #Report 2
@@ -239,7 +244,10 @@ tidy_reg_obj <- reg_obj %>%
 
 
 tidy_reg_obj
+glance(tidy_reg_obj)
 ```
+
+
 
 
 
@@ -308,6 +316,9 @@ ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
   
 
 ```
+
+
+
 
 
 ```{r}
