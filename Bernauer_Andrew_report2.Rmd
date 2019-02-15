@@ -223,31 +223,103 @@ log_ols <- lm(log(price) ~ log(transaction_history), data = ether_df, subset = p
 
 ##Regression Diagnostics 
 
+The following code chunk returns tidyed summary for the best regression I ran.
 ```{r tidy diagnostics}
 library(broom)
 
-tidy_poly_reg <- poly_reg %>%
-  tidy()
 
 tidy_reg_obj <- reg_obj %>%
   tidy()
 
-tidy_reg_obj_2 <- reg_obj_2 %>%
-  tidy()
 
-tidy_reg_obj_3 <- reg_obj_3 %>%
-  tidy()
+tidy_reg_obj
+```
 
-tidy_mols <- mols %>%
-  tidy()
 
-tidy_log_ols <- log_ols %>%
-  tidy()
+```{r}
+glance_tidy_poly <- glance(poly_reg)
+
+glance_reg_obj <- glance(reg_obj)
+
+glance_reg_obj_2 <- glance(reg_obj_2)
+
+glance_reg_obj_3 <- glance(reg_obj_3)
+
+glance_mols <- glance(mols)
+
+glance_log_ols <- glance(log_ols)
+
+
+glance_tidy_poly$adj.r.squared
+
+glance_reg_obj$adj.r.squared
+
+glance_reg_obj_2$adj.r.squared
+
+glance_reg_obj_3$adj.r.squared
+
+glance_mols$adj.r.squared
+
+glance_log_ols$adj.r.squared
+
+```
+The log-log model with all the continuous predictors included had the highest adjusted $R^2 $ of all the regressions run. This model setup can be interpreted as a percentage in x will have a 
+
+
+
+
+```{r augment}
+augmented_reg_obj <- reg_obj %>%
+             augment()
+
+some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
+  geom_point(color = "purple", size = 1) +
+  labs(x="log(price)", y="yhat")
+
+some_plot
+```
+The preceding plot points to the non-linear nature of the data set.
+
+
+
+
+
+```{r}
+tidy_conf_it <- tidy(reg_obj, conf.int = TRUE)
+
+ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=estimate - 1.96*std.error, ymax=estimate + 1.96*std.error))
+  
+  
+ 
+  
+  
 
 ```
 
 
+```{r}
+some_plot_2 <- ggplot(data = augmented_reg_obj, aes(.resid)) + 
+  geom_histogram(binwidth = .3, fill = "purple") + 
+  labs(x="Residuals", y="Frequency") +
+  
 
+some_plot_2
+```
+The majority of the residuals are distributed between -1 and 1 peaking at zero. 
+
+
+
+```{r}
+some_plot_3 <- ggplot(augmented_reg_obj, aes(log.price., .resid)) +
+  geom_point(color = "purple", size = 1) +
+  geom_hline(color = "yellow", yintercept = 0)
+
+some_plot_3 
+
+
+```
 
 
 ##KNN Regression
@@ -292,6 +364,7 @@ y_hat <- predict(knn_model, newdata = ether_df)
 predicted <- predict(knn_model, ether_df)
 
 plot(ether_df$price, predicted)
-sqrt(sum(predicted - ether_df$price) ^ 2 / length(ether_df)) / mean(ether_df$price)
+sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df)) 
+
 ```
 
