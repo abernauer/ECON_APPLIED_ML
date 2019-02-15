@@ -71,6 +71,11 @@ l_ether <- list( price = ether_price$Value,
 
 ether_df <- as_tibble(l_ether)
 
+head(ether_df)
+
+tail(ether_df)
+
+summary(ether_df)
 
 ```
 
@@ -277,11 +282,12 @@ augmented_reg_obj <- reg_obj %>%
 some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
   geom_point(color = "purple", size = 1) +
   labs(x="log(price)", y="yhat") +
-  scale_y_log10()
+  scale_y_log10() +
+  ggtitle("Y hat over Y")
 
 some_plot
 ```
-The preceding plot points to the non-linear nature of the data set.
+The preceding plot points to the non-linear nature of the data set. A regression model with a polynomial term could lead to future improvements.
 
 
 
@@ -292,7 +298,9 @@ tidy_conf_it <- tidy(reg_obj, conf.int = TRUE)
 
 ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
   geom_point() +
-  geom_errorbar(aes(ymin=estimate - 1.96*std.error, ymax=estimate + 1.96*std.error))
+  geom_errorbar(aes(ymin=estimate - 1.96*std.error, ymax=estimate + 1.96*std.error)) +
+  ggtitle("Coefficients with standard errrors")
+  
   
   
  
@@ -329,6 +337,7 @@ some_plot_3 +
 
 ```
 
+The Residuals plotted against Ether Price suggest there is possible non-normality in the distribution of the errors.
 
 ##KNN Regression
 
