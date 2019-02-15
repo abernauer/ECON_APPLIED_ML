@@ -373,7 +373,7 @@ The Residuals plotted against Ether Price suggest there is possible non-normalit
 
 
 
-```{r knn regression, eval=FALSE}
+```{r knn regression}
 library(caret)
 
 set.seed(20)
@@ -411,3 +411,7 @@ sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df))
 
 ```
 
+
+
+#Conclusion
+Before my next report adding variables that are scaled with logs to my tibble would make future plotting easier. KNN does not appear to be a significant improvement in comparison to the standard OLS techniques. Regression models with a mix of different coefficient or transformation techniques could yield better results. Though this might complicate the interpretation of the model. 
