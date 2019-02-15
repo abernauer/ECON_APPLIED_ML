@@ -195,11 +195,11 @@ ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = medi
 
 #####Conclusion
 
-Ethereum data is quite complex on the surface level before the next report
+Ethereum data is quite complex on the surface level before the next report I should complete some more research on it's block chain technology. As I am more familiar with Bitcoin and it could lead to new insights on the data. 
 
 
 
-#Report 2
+#Report 2: Regression Modeling Ether Price
 
 
 
@@ -244,9 +244,9 @@ tidy_reg_obj <- reg_obj %>%
 
 
 tidy_reg_obj
-glance(tidy_reg_obj)
+glance(reg_obj)
 ```
-
+All of the coefficients return p values significant at the .10 cut off level while log block size is close. 
 
 
 
@@ -278,7 +278,11 @@ glance_mols$adj.r.squared
 glance_log_ols$adj.r.squared
 
 ```
-The log-log model with all the continuous predictors included had the highest adjusted $R^2 $ of all the regressions run. A log-log model can be interpreted as a  
+The log-log model with all the continuous predictors included had the highest adjusted $R^2 $ of all the regressions run. A model excluding the log block size term comes in a close second. Another, potential option is the last model with just log transaction history as a predictor. 
+
+Predictors performing the best presented the following equation $\hat{y} = -10.65 + 0.072\log(BlockSize) + 1.0007 \log(TransactionHistory) + 0.222\log(HashRate)$.
+
+Which can be interpreted as a one percent increase in Blocksize resulting in a 0.072 percent increase in Ether price. The same interpretation applies to the other predictors with there respective coefficients. 
 
 
 
@@ -316,6 +320,8 @@ ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
   
 
 ```
+The previous graph is misleading due to the scale with a scale adjustment it is more insightful.
+
 
 
 
@@ -338,11 +344,12 @@ The majority of the residuals are distributed between -1 and 1 peaking at zero.
 ```{r, warning= FALSE}
 some_plot_3 <- ggplot(augmented_reg_obj, aes(log.price., .resid)) +
   geom_point(color = "purple", size = 1) +
-  geom_hline(color = "yellow", yintercept = 0) 
+  geom_hline(color = "yellow", yintercept = 0) +
+  labs(x="Y", y="Residuals") +
+  ggtitle("Residuals over Ether Price")
 
-some_plot_3 +
-  scale_y_log10()
-
+some_plot_3 
+  
 
 
 
