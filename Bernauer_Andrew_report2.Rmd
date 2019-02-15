@@ -20,6 +20,7 @@ For the semester long project I will be attempting to predict the known response
 
 $$ethereum price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
 
+Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. 
 
 
 
@@ -76,7 +77,7 @@ ether_df <- as_tibble(l_ether)
 
 
 ####Plots
-```{r price_vs_time}
+```{r price_vs_time, warning=FALSE}
  
 price_history <- ggplot(ether_df) +
   aes(date_utc, price) +
@@ -147,7 +148,7 @@ Network hashrate growth blows up exponentially and seems to follow that trend ov
 
 
 
-```{r bonus plot from eda}
+```{r bonus plot from eda, warning= FALSE}
  price_plot <- ggplot(ether_df) +
    aes(transaction_history, price) +
    geom_point(colour="purple") + 
@@ -236,6 +237,7 @@ tidy_reg_obj
 ```
 
 
+
 ```{r}
 glance_tidy_poly <- glance(poly_reg)
 
@@ -263,7 +265,7 @@ glance_mols$adj.r.squared
 glance_log_ols$adj.r.squared
 
 ```
-The log-log model with all the continuous predictors included had the highest adjusted $R^2 $ of all the regressions run. This model setup can be interpreted as a percentage in x will have a 
+The log-log model with all the continuous predictors included had the highest adjusted $R^2 $ of all the regressions run. A log-log model can be interpreted as a  
 
 
 
@@ -274,7 +276,8 @@ augmented_reg_obj <- reg_obj %>%
 
 some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
   geom_point(color = "purple", size = 1) +
-  labs(x="log(price)", y="yhat")
+  labs(x="log(price)", y="yhat") +
+  scale_y_log10()
 
 some_plot
 ```
@@ -303,6 +306,8 @@ ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
 some_plot_2 <- ggplot(data = augmented_reg_obj, aes(.resid)) + 
   geom_histogram(binwidth = .3, fill = "purple") + 
   labs(x="Residuals", y="Frequency") +
+  ggtitle("Distribution of Residuals")
+  
   
 
 some_plot_2
@@ -311,12 +316,15 @@ The majority of the residuals are distributed between -1 and 1 peaking at zero.
 
 
 
-```{r}
+```{r, warning= FALSE}
 some_plot_3 <- ggplot(augmented_reg_obj, aes(log.price., .resid)) +
   geom_point(color = "purple", size = 1) +
-  geom_hline(color = "yellow", yintercept = 0)
+  geom_hline(color = "yellow", yintercept = 0) 
 
-some_plot_3 
+some_plot_3 +
+  scale_y_log10()
+
+
 
 
 ```
@@ -330,7 +338,7 @@ some_plot_3
 
 
 
-```{r knn regression}
+```{r knn regression, eval=FALSE}
 library(caret)
 
 set.seed(20)
