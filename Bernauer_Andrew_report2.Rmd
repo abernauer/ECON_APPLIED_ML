@@ -18,9 +18,9 @@ For the semester long project I will be attempting to predict the known response
 
 
 
-$$ethereum price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
+$$ether price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
 
-Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. Block size refers to the size of the block chain. Transactions are the number of transactions approved by the ledger. Hash rate is the rate at which the Cryptographic computation takes on the block chain. 
+Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. 
 
 
 
@@ -36,6 +36,7 @@ library(dplyr)
 library(readr)
 library(tibble)
 library(errorist)
+library(broom)
 
 #substitute in the path on your machine to files 
 ethereum_transaction_history <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumTransactionHistory.csv")
@@ -67,15 +68,29 @@ l_ether <- list( price = ether_price$Value,
                  day = day_of_week, 
                  month = month_of_year,
                  date_utc = mdy(ethereum_network_hash_rate$`Date(UTC)`),
-                 unix_time_stamp = ethereum_network_hash_rate$UnixTimeStamp)
+                 unix_time_stamp = ethereum_network_hash_rate$UnixTimeStamp,
+                 log_10_price = log_price,
+                 log_10_trans_history = log_history,
+                 log_10_block_size = log_block_size,
+                 log_10_hash_rate = log_hash_rate)
 
 ether_df <- as_tibble(l_ether)
 
-head(ether_df)
+signedlog10 <- function(x) {
+  ifelse(abs(x) <= 1, 0, sign(x)*log10(abs(x)))
+}
 
-tail(ether_df)
+log_price <- signedlog10(l_ether[[1]])
 
-summary(ether_df)
+log_history <- signedlog10(l_ether[[2]])
+
+log_block_size <- signedlog10(l_ether[[3]])
+
+log_hash_rate <- signedlog10(l_ether[[4]])
+
+summary(log_price)
+
+summary(log_history)
 
 ```
 
@@ -147,7 +162,7 @@ Network hashrate growth blows up exponentially and seems to follow that trend ov
  transaction_history
 ```
 
-Transactions on the Ethereum network are growing very quickly and people are embracing the technology it is based on.
+Transactions on the the Ethereum network are growing significantly overtime and more people are embracing it's use.
 
 
 
@@ -167,8 +182,30 @@ Transactions on the Ethereum network are growing very quickly and people are emb
  
 ```
 
-Ether Price appears to fall into clusters as transactions increase and you isolate for month of the year. 
+There appears to be some clustering of Ether price as transactions increases on the block chain increase isolating by month.
 
+```{r}
+ggplot(ether_df) + 
+  aes(price) +
+  geom_histogram(fill = "purple", bins = 34) +
+  scale_x_log10()
+```
+
+
+```{r}
+ggplot(ether_df) + 
+  aes(transaction_history) +
+  geom_histogram(fill = "purple", bins = 34) + 
+  scale_x_log10()
+```
+
+```{r}
+p <- ggplot(ether_df) +
+ aes(sample = log_10_price) + 
+  stat_qq() + stat_qq_line() 
+  
+p
+```
 
 
 
@@ -193,19 +230,14 @@ ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = medi
 
 ```
 
-#####Conclusion
 
-Ethereum data is quite complex on the surface level before the next report I should complete some more research on it's block chain technology. As I am more familiar with Bitcoin and it could lead to new insights on the data. 
-
-
-
-#Report 2: Regression Modeling Ether Price
+#Report 2
 
 
 
 
 
-#Regressions
+##Regressions
 
 
 ```{r regressions,}
@@ -232,24 +264,9 @@ log_ols <- lm(log(price) ~ log(transaction_history), data = ether_df, subset = p
 
 
 
-##Regression Diagnostics 
+###Regression Diagnostics 
 
-The following code chunk returns tidyed summary for the best regression I ran.
-```{r tidy diagnostics}
-library(broom)
-
-
-tidy_reg_obj <- reg_obj %>%
-  tidy()
-
-
-tidy_reg_obj
-glance(reg_obj)
-```
-All of the coefficients return p values significant at the .10 cut off level while log block size is close. The F statistic is significant; however the BIC and AIC below could be lower. 
-
-
-
+The following code block returns the adjusted $R^{2}$ statistics for the five regressions I ran.
 
 
 
@@ -280,11 +297,20 @@ glance_mols$adj.r.squared
 glance_log_ols$adj.r.squared
 
 ```
-The log-log model with all the continuous predictors included had the highest adjusted $R^2 $ of all the regressions run. A model excluding the log block size term comes in a close second. Another, potential option is the last model with just log transaction history as a predictor. 
+The log-log model with all the continuous predictors included had the highest adjusted $R^{2} = 0.9363884 $ of all the regressions run. A log-log model can be interpreted as a the percentage change in Y by a one percentage change in X. Accordingly, if X increase by 1 we expect a $\beta_{1}$ percent change in Y. 
 
-Predictors performing the best presented the following equation $\hat{y} = -10.65 + 0.072\log(BlockSize) + 1.0007 \log(TransactionHistory) + 0.222\log(HashRate)$.
 
-Which can be interpreted as a one percent increase in Blocksize resulting in a 0.072 percent increase in Ether price. The same interpretation applies to the other predictors with there respective coefficients. 
+The model in this case is $\ln(ether price) = \beta_{0} + $
+
+
+
+
+
+```{r}
+tidy_reg_obj
+glance(tidy_reg_obj)
+```
+
 
 
 
@@ -295,42 +321,67 @@ augmented_reg_obj <- reg_obj %>%
 
 some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
   geom_point(color = "purple", size = 1) +
-  labs(x="log(price)", y="yhat") +
-  scale_y_log10() +
-  ggtitle("Y hat over Y")
+  labs(x="log(price)", y="y hat") +
+  ggtitle("Log price vs Y hat")
+  
 
 some_plot
 ```
-The preceding plot points to the non-linear nature of the data set. A regression model with a polynomial term could lead to future improvements.
+The preceding plot points to the non-linear nature of the data set. It may improve modeling results to include a polynomial term in future models.
 
 
-
-
-
-```{r}
-tidy_conf_it <- tidy(reg_obj, conf.int = TRUE)
-
-confin_it_plot <- ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
-  geom_point() +
-  geom_errorbar(aes(ymin=estimate - 1.96*std.error, ymax=estimate + 1.96*std.error)) +
-  ggtitle("Coefficients with standard errors")
-  
-  confin_it_plot
-  
- 
-  
-  
-
-```
-The previous graph is misleading due to the scale with a scale adjustment it is more insightful.
 
 
 
 ```{r, warning=FALSE}
-confin_it_plot + 
-  scale_y_log10()
+tidy_conf_it <- tidy(reg_obj, conf.int = TRUE)
+
+confint_plot <- ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=estimate - 1.96*std.error, ymax=estimate + 1.96*std.error)) 
+  
+
+confint_plot +
+  ggtitle("Coefficients with standard errors")
+  
+
 ```
-This plot points to a potential issue with logblocksize term not being statistically significant.
+
+
+
+
+```{r proper scale, warning=FALSE}
+
+confint_plot + 
+  scale_y_log10() +
+  ggtitle("Coefficients with standard errors log-log scale")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -352,18 +403,21 @@ The majority of the residuals are distributed between -1 and 1 peaking at zero.
 ```{r, warning= FALSE}
 some_plot_3 <- ggplot(augmented_reg_obj, aes(log.price., .resid)) +
   geom_point(color = "purple", size = 1) +
-  geom_hline(color = "yellow", yintercept = 0) +
-  labs(x="Y", y="Residuals") +
-  ggtitle("Residuals over Ether Price")
+  geom_hline(color = "yellow", yintercept = 0) 
 
-some_plot_3 
-  
+some_plot_3 + 
+  labs(x="Log Ether Price", y="Residuals")
+
 
 
 
 ```
 
-The Residuals plotted against Ether Price suggest there is possible non-normality in the distribution of the errors.
+
+
+
+
+
 
 ##KNN Regression
 
@@ -373,7 +427,7 @@ The Residuals plotted against Ether Price suggest there is possible non-normalit
 
 
 
-```{r knn regression}
+```{r knn regression, eval=FALSE}
 library(caret)
 
 set.seed(20)
@@ -411,7 +465,3 @@ sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df))
 
 ```
 
-
-
-#Conclusion
-Before my next report adding variables that are scaled with logs to my tibble would make future plotting easier. KNN does not appear to be a significant improvement in comparison to the standard OLS techniques. Regression models with a mix of different coefficient or transformation techniques could yield better results. Though this might complicate the interpretation of the model. 
