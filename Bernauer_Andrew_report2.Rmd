@@ -37,6 +37,7 @@ library(readr)
 library(tibble)
 library(errorist)
 library(broom)
+library(caret)
 
 #substitute in the path on your machine to files 
 ethereum_transaction_history <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumTransactionHistory.csv")
@@ -60,11 +61,27 @@ month_of_year <-
   month( ,label=TRUE) %>%
   sort()
 
+signedlog10 <- function(x) {
+  ifelse(abs(x) <= 1, 0, sign(x)*log10(abs(x)))
+}
+
+log_price <- signedlog10(ether_price[[3]])
+
+log_history <- signedlog10(ethereum_transaction_history[[3]])
+
+log_block_size <- signedlog10(ethereum_block_size[[3]])
+
+log_hash_rate <- signedlog10(ethereum_network_hash_rate[[3]])
+
+summary(log_price)
+
+summary(log_history)
+
 # construct list of variables to coerce into a tibble
-l_ether <- list( price = ether_price$Value,
-                 transaction_history = as.integer(ethereum_transaction_history$Value),
-                 block_size = as.integer(ethereum_block_size$Value),
-                 hash_rate = ethereum_network_hash_rate$Value, 
+l_ether <- list( price = ether_price[[3]],
+                 transaction_history = as.integer(ethereum_transaction_history[[3]]),
+                 block_size = as.integer(ethereum_block_size[[3]]),
+                 hash_rate = ethereum_network_hash_rate[[3]], 
                  day = day_of_week, 
                  month = month_of_year,
                  date_utc = mdy(ethereum_network_hash_rate$`Date(UTC)`),
@@ -76,21 +93,8 @@ l_ether <- list( price = ether_price$Value,
 
 ether_df <- as_tibble(l_ether)
 
-signedlog10 <- function(x) {
-  ifelse(abs(x) <= 1, 0, sign(x)*log10(abs(x)))
-}
 
-log_price <- signedlog10(l_ether[[1]])
 
-log_history <- signedlog10(l_ether[[2]])
-
-log_block_size <- signedlog10(l_ether[[3]])
-
-log_hash_rate <- signedlog10(l_ether[[4]])
-
-summary(log_price)
-
-summary(log_history)
 
 ```
 
@@ -186,26 +190,35 @@ There appears to be some clustering of Ether price as transactions increases on 
 
 ```{r}
 ggplot(ether_df) + 
-  aes(price) +
-  geom_histogram(fill = "purple", bins = 34) +
-  scale_x_log10()
+  aes(block_size) +
+  geom_density() +
+  scale_x_log10() +
+  annotation_logticks(sides = "back")
 ```
 
 
 ```{r}
 ggplot(ether_df) + 
-  aes(transaction_history) +
-  geom_histogram(fill = "purple", bins = 34) + 
-  scale_x_log10()
+  aes(log_10_trans_history) +
+  geom_histogram(fill = "purple", bins = 34) 
+
 ```
 
 ```{r}
 p <- ggplot(ether_df) +
- aes(sample = log_10_price) + 
-  stat_qq() + stat_qq_line() 
+ aes(log_10_hash_rate) + geom_histogram(bins = 34, fill = "purple")
+  
   
 p
 ```
+
+```{r}
+ggplot(ether_df) +
+  aes(log_block_size) + geom_histogram(bins = 34, fill = 'purple') +
+  xlab("Log10(BlockSize)") +
+  ylab("Count")
+```
+
 
 
 
@@ -463,5 +476,33 @@ predicted <- predict(knn_model, ether_df)
 plot(ether_df$price, predicted)
 sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df)) 
 
+```
+
+
+```{r}
+library(glmnet)
+library(caret)
+
+set.seed(385)
+
+train_df <- ether_df %>% sample_frac(0.7)
+test_df <- ether_df %>% setdiff(train_df)
+
+press_f <- train_df[[1]] ~ train_df[[2]] + train_df[[3]] + train_df[[4]] + train_df[[5]] + train_df[[6]]
+design_mat <- model.matrix(press_f ,train_df)[, -1]
+
+price_y <- train_df[[1]]
+
+ridge_fit <- glmnet(design_mat, price_y, alpha = 0)
+
+plot(ridge_fit , label = TRUE)
+
+lasso_fit <- glmnet(design_mat, price_y, alpha = 1)
+
+
+
+nzv <- nearZeroVar(ether_df[, -5:-8], saveMetrics = TRUE)
+
+nzv$percentUnique
 ```
 
