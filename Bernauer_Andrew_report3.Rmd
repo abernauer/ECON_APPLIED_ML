@@ -1,0 +1,532 @@
+---
+title: "Bernauer_Andrew_report2"
+author: "Andrew Bernauer"
+date: "February 12, 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Report 1
+
+
+##Introduction 
+For the semester long project I will be attempting to predict the known response variable ethereum price in terms of the predictors: block size, network hash rate growth rate, transactions, day of the week, and month. The project is regression based and not a classification task. Therefore the project will fall under the umbrella of supervised machine learning.    
+
+
+
+$$ether price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
+
+Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. 
+
+
+
+###Data  
+```{r data carpentry}
+
+
+library(scales)
+library(ggplot2)
+library(lubridate)
+library(purrr)
+library(dplyr)
+library(readr)
+library(tibble)
+library(errorist)
+library(broom)
+library(caret)
+
+#substitute in the path on your machine to files 
+ethereum_transaction_history <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumTransactionHistory.csv")
+
+ethereum_block_size <-read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumBlockSizeHistory.csv"
+)
+
+ethereum_network_hash_rate <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumNetworkHashRateGrowthRate.csv")
+
+ether_price <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EtherPriceHistory(USD).csv")
+
+# creating variable for day  
+day_of_week <- 
+  lubridate::mdy(ether_price$`Date(UTC)`) %>%
+  wday( ,label=TRUE)  %>%
+  sort()
+
+# creating variable for month
+month_of_year <-
+  lubridate::mdy(ether_price$`Date(UTC)`) %>%
+  month( ,label=TRUE) %>%
+  sort()
+
+signedlog10 <- function(x) {
+  ifelse(abs(x) <= 1, 0, sign(x)*log10(abs(x)))
+}
+
+log_price <- signedlog10(ether_price[[3]])
+
+log_history <- signedlog10(ethereum_transaction_history[[3]])
+
+log_block_size <- signedlog10(ethereum_block_size[[3]])
+
+log_hash_rate <- signedlog10(ethereum_network_hash_rate[[3]])
+
+summary(log_price)
+
+summary(log_history)
+
+# construct list of variables to coerce into a tibble
+l_ether <- list( price = ether_price[[3]],
+                 transaction_history = as.integer(ethereum_transaction_history[[3]]),
+                 block_size = as.integer(ethereum_block_size[[3]]),
+                 hash_rate = ethereum_network_hash_rate[[3]], 
+                 day = day_of_week, 
+                 month = month_of_year,
+                 date_utc = mdy(ethereum_network_hash_rate$`Date(UTC)`),
+                 unix_time_stamp = ethereum_network_hash_rate$UnixTimeStamp,
+                 log_10_price = log_price,
+                 log_10_trans_history = log_history,
+                 log_10_block_size = log_block_size,
+                 log_10_hash_rate = log_hash_rate)
+
+ether_df <- as_tibble(l_ether)
+
+
+xs <-function(x){(x-mean(x))/(2*sd(x))}
+
+```
+
+
+
+####Plots
+```{r price_vs_time, warning=FALSE}
+ 
+price_history <- ggplot(ether_df) +
+  aes(date_utc, price) +
+  geom_line(color="purple") + 
+  xlab("Year")+
+  ggtitle("Ethereum Price USD over time") + 
+  scale_y_log10() 
+  
+  
+  
+
+ price_history
+```
+
+
+The price doesn't seem move at all significantly until 2016 so I decided to use a log transformation to the y axis. This removed a large amount the visual noise and made the price change overtime more evident. Besides that ethereum price starts to rise from around a dollar price to hovering around the ten dollars between 2016 and 2017. Peaks at a value of 1000 dollars in 2018.   
+
+
+
+
+
+```{r block_size}
+block_history <- ggplot(ether_df) +
+  aes(date_utc, block_size) +
+  geom_line(color ="purple") +
+  scale_y_log10() +
+  xlab("Year") +
+  ylab("Block Size") +
+  ggtitle("Ethereum Block Size Over Time")
+  
+
+block_history
+```
+
+Block size rises exponentially begining in 2017. Prior to this it fluctuates up and down between 1000 and 3000 which might be pointing to autocorrelation. In this same time period it peaks violently at 10000. Reaching a maximum of over 30000 in 2018. Another log tranformation was used in this plot.  
+
+
+
+```{r network hashrate}
+ hashrate_history <- ggplot(ether_df) + 
+  aes(date_utc, hash_rate) +
+  geom_line(color="purple") +
+  scale_y_log10() +
+  xlab("Year") +
+  ylab("Network Hash rate Growth rate") +
+  ggtitle("Ethereum Network Hash rate growth over time")
+
+ hashrate_history
+```
+
+Network hashrate growth blows up exponentially and seems to follow that trend overtime. 
+
+```{r transaction history, warning=FALSE}
+ transaction_history <- ggplot(ether_df) + 
+  aes(date_utc, transaction_history) +
+  geom_line(color="purple") +
+  xlab("Year") +
+  ylab("Transactions") +
+  scale_y_log10() +
+  ggtitle("Ethereum Transactions over time")
+
+ transaction_history
+```
+
+Transactions on the the Ethereum network are growing significantly overtime and more people are embracing it's use.
+
+
+
+
+
+```{r bonus plot from eda, warning= FALSE}
+ price_plot <- ggplot(ether_df) +
+   aes(transaction_history, price) +
+   geom_point(colour="purple") + 
+   facet_wrap(~month) +
+   geom_smooth(colour="yellow", alpha = 0.25) 
+
+ price_plot +
+   scale_x_log10("Transactions") +
+   scale_y_log10("Ethereum Price USD($)") +
+   ggtitle("Ethereum Price USD($) vs Transactions facetted by month") 
+ 
+```
+
+There appears to be some clustering of Ether price as transactions increases on the block chain increase isolating by month.
+
+```{r}
+ggplot(ether_df) + 
+  aes(hash_rate) +
+  geom_density() +
+  annotation_logticks(sides = "back")
+```
+
+
+```{r}
+ggplot(ether_df) + 
+  aes(log_10_trans_history) +
+  geom_histogram(fill = "purple", bins = 34) 
+
+```
+
+```{r}
+p <- ggplot(ether_df) +
+ aes(log_10_hash_rate) + geom_histogram(bins = 34, fill = "purple")
+  
+  
+p
+```
+
+```{r}
+ggplot(ether_df) +
+  aes(log_block_size) + geom_histogram(bins = 34, fill = 'purple') +
+  xlab("Log10(BlockSize)") +
+  ylab("Count")
+```
+
+
+
+
+#####Summary Code
+
+```{r tidy_summary_code}
+
+#summary stats for ethereum price  
+ether_df %>% summarise(mean_price = mean(price, na.rm = TRUE), median_price = median(price), sd_price = sd(price), iqr_price = IQR(price), n = n(), mad_price = mad(price), min_price = min(price), max_price = max(price))
+
+#summary stats for ethereum transaction history
+ether_df %>% summarise(mean_transaction_history = mean(transaction_history), median_transaction_history = median(transaction_history), sd_transaction_history = sd(transaction_history), iqr_transaction_history = IQR(transaction_history), n = n(), mad_transaction_history = mad(transaction_history), min_transaction_history = min(transaction_history), max_transaction_history = max(transaction_history))
+
+#summary stats for ethereum block size
+ether_df %>% summarise(mean_block_size = mean(block_size), median_block_size = median(block_size), sd_block_size = sd(block_size), iqr_block_size = IQR(block_size), n = n(), mad_block_size = mad(block_size), min_block_size = min(block_size), max_block_size = max(block_size))
+
+#summary stats for hash rate
+ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = median(hash_rate), sd_hash_rate= sd(hash_rate), iqr_hash_rate = IQR(hash_rate), n = n(), mad_hash_rate = mad(hash_rate), min_hash_rate = min(hash_rate), max_hash_rate = max(hash_rate))
+
+
+
+
+```
+
+
+#Report 2
+
+
+
+
+
+##Regressions
+
+
+```{r regressions,}
+#running five regressions 
+ 
+poly_reg <- lm(price ~ poly(transaction_history, 5) + poly(block_size, 5) + poly(hash_rate, 5), ether_df )
+
+
+reg_obj <- lm(log(price) ~ log(block_size) + log(transaction_history) + log(hash_rate), data = ether_df,  subset = price > 0)
+
+reg_obj_2 <- lm(log(price) ~ log(transaction_history) + log(hash_rate), data = ether_df, subset = price > 0)
+
+
+reg_obj_3 <- lm(price ~ I(block_size)^2 + sqrt(transaction_history) + hash_rate, data = ether_df)
+
+mols <- lm(price ~ block_size + transaction_history + hash_rate, data = ether_df)
+
+log_ols <- lm(log(price) ~ log(transaction_history), data = ether_df, subset = price > 0)
+
+
+ 
+
+```
+
+
+
+###Regression Diagnostics 
+
+The following code block returns the adjusted $R^{2}$ statistics for the five regressions I ran.
+
+
+
+```{r}
+glance_tidy_poly <- glance(poly_reg)
+
+glance_reg_obj <- glance(reg_obj)
+
+glance_reg_obj_2 <- glance(reg_obj_2)
+
+glance_reg_obj_3 <- glance(reg_obj_3)
+
+glance_mols <- glance(mols)
+
+glance_log_ols <- glance(log_ols)
+
+
+glance_tidy_poly$adj.r.squared
+
+glance_reg_obj$adj.r.squared
+
+glance_reg_obj_2$adj.r.squared
+
+glance_reg_obj_3$adj.r.squared
+
+glance_mols$adj.r.squared
+
+glance_log_ols$adj.r.squared
+
+```
+The log-log model with all the continuous predictors included had the highest adjusted $R^{2} = 0.9363884 $ of all the regressions run. A log-log model can be interpreted as a the percentage change in Y by a one percentage change in X. Accordingly, if X increase by 1 we expect a $\beta_{1}$ percent change in Y. 
+
+
+The model in this case is $\ln(ether price) = \beta_{0} + $
+
+
+
+
+
+```{r}
+tidy_reg_obj <- reg_obj %>% 
+   tidy()
+
+glance(tidy_reg_obj)
+```
+
+
+
+
+
+```{r augment}
+augmented_reg_obj <- reg_obj %>%
+             augment()
+
+some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
+  geom_point(color = "purple", size = 1) +
+  labs(x="log(price)", y="y hat") +
+  ggtitle("Log price vs Y hat")
+  
+
+some_plot
+```
+The preceding plot points to the non-linear nature of the data set. It may improve modeling results to include a polynomial term in future models.
+
+
+
+
+
+```{r, warning=FALSE}
+tidy_conf_it <- tidy(reg_obj, conf.int = TRUE)
+
+confint_plot <- ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=estimate - 1.96*std.error, ymax=estimate + 1.96*std.error)) 
+  
+
+confint_plot +
+  ggtitle("Coefficients with standard errors")
+  
+
+```
+
+
+
+
+```{r proper scale, warning=FALSE}
+
+confint_plot + 
+  scale_y_log10() +
+  ggtitle("Coefficients with standard errors log-log scale")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+some_plot_2 <- ggplot(data = augmented_reg_obj, aes(.resid)) + 
+  geom_histogram(binwidth = .3, fill = "purple") + 
+  labs(x="Residuals", y="Frequency") +
+  ggtitle("Distribution of Residuals")
+  
+  
+
+some_plot_2
+```
+The majority of the residuals are distributed between -1 and 1 peaking at zero. 
+
+
+
+```{r, warning= FALSE}
+some_plot_3 <- ggplot(augmented_reg_obj, aes(log.price., .resid)) +
+  geom_point(color = "purple", size = 1) +
+  geom_hline(color = "yellow", yintercept = 0) 
+
+some_plot_3 + 
+  labs(x="Log Ether Price", y="Residuals")
+
+
+
+
+```
+
+
+
+
+
+
+
+##KNN Regression
+
+
+
+
+
+
+
+```{r knn regression, eval=FALSE}
+library(caret)
+
+set.seed(20)
+
+train_index <- createDataPartition(ether_df$price, p = .8, list = FALSE, times = 1)
+
+head(train_index)
+
+ether_df_train <- ether_df[train_index, ]
+
+ether_df_test <- ether_df[-train_index, ]
+
+tr_control <- trainControl(method = "repeatedcv",
+             number = 10,
+             repeats = 3
+             )
+knn_model <-  train(price ~., data = ether_df,
+                    method = "knn",
+                    preProcess = c("center", "scale"), 
+                    trControl = tr_control, 
+                    metric = "RMSE",
+                    tuneLength = 10
+                    )
+
+knn_model
+
+knn_model$results
+
+y_hat <- predict(knn_model, newdata = ether_df)
+
+predicted <- predict(knn_model, ether_df)
+
+plot(ether_df$price, predicted)
+sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df)) 
+
+```
+
+
+```{r}
+library(glmnet)
+library(caret)
+
+set.seed(385)
+
+train_df <- ether_df %>% sample_frac(0.7)
+test_df <- ether_df %>% setdiff(train_df)
+
+
+design_mat <- model.matrix(press_f ,train_df)[, -1]
+
+price_y <- train_df[[1]]
+
+ridge_fit <- glmnet(design_mat, price_y, alpha = 0)
+
+plot(ridge_fit , label = TRUE)
+
+lasso_fit <- glmnet(design_mat, price_y, alpha = 1)
+
+
+
+nzv <- nearZeroVar(ether_df[, -5:-8], saveMetrics = TRUE)
+
+nzv$percentUnique
+```
+
+```{r}
+contour <- ggplot(data = ether_df, aes(x=log_10_trans_history, y=log_10_price)) + 
+  geom_point(color='purple', alpha = 0.10) +                  
+  geom_density_2d(color='yellow') +
+  annotation_logticks() 
+  
+contour 
+
+
+```
+
+```{r}
+contour_2 <- ggplot(data = ether_df, aes(x=log_10_block_size, y=log_10_price))+ 
+  geom_point(color='purple', alpha = 0.10) +                  
+  geom_density_2d(color = 'yellow', linemitre = 2)
+
+contour_2 
+```
+
+```{r}
+library(glmnet)
+```
+
