@@ -533,7 +533,7 @@ best_lambda_ridge <- cv_ridge$lambda.1se
 
 best_lambda_lasso <- cv_lasso$lambda.1se
 
-print(best_lamda_ridge)
+print(best_lambda_ridge)
 
 
 ridge_coefficients <- coef.glmnet(cv_ridge, newx = covariates_train,  s = best_lambda_ridge)
@@ -551,7 +551,12 @@ print(ridge_coefficients)
 
 
 ```{r}
- lasso_test_pred = predict.glmnet(lasso_model, p)
+lasso_test_pred = predict.glmnet(lasso_model, newx = covariates_test, s=best_lambda_lasso)
+
+ridge_test_pred = predict.glmnet(ridge_model, newx = covariates_test, s=best_lambda_ridge)
+mean((response_test - lasso_test_pred) ^ 2)
+
+mean((response_test - ridge_test_pred) ^ 2)
 ```
 
 
