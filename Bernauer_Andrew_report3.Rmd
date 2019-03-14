@@ -188,35 +188,31 @@ Transactions on the the Ethereum network are growing significantly overtime and 
 
 There appears to be some clustering of Ether price as transactions increases on the block chain increase isolating by month.
 
-```{r}
-ggplot(ether_df) + 
-  aes(hash_rate) +
-  geom_density() +
-  annotation_logticks(sides = "back")
-```
-
 
 
 ```{r}
 p <- ggplot(ether_df) +
  aes(log_10_hash_rate) + geom_histogram(bins = 34, fill = "purple") +
   ggtitle(label = "Histogram of the distribution of hash rate log 10 scale") +
-  xlab("Distribution of log 10 trans")
+  xlab("Distribution of log 10 transactions")
   
   
 p
 ```
-Many of the $X_{1}, X_{2}, \dots, X_{n}$ i
+
+Many of the $X_{1}, X_{2}, \dots, X_{n}$ or predictor variables in the dataset follow skewed distribution and feature multiple peaks. This could be pointing to the presence of sub-populations within the underlying data. 
 
 
-```{r}
+```{r hist block_size,}
 ggplot(ether_df) +
   aes(log_block_size) + geom_histogram(bins = 34, fill = 'purple') +
-  xlab("Log10(BlockSize)") +
-  ylab("Count")
+  xlab("Distribution of Ethereum BlockSize log 10 scale") +
+  ylab("Count") +
+  ggtitle("Histogram of Ethereum block size")
+
 ```
 
-
+Likewise, blocksize has this similar property this sort of distribution doesn't suit itself well standard machine learning algorithms given the multiple peaks. Most of the variables follow gamma distributions in the cartesian coordinate scale. I declined to illustrate those graphs.
 
 
 #####Summary Code
