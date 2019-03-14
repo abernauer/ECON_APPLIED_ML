@@ -492,9 +492,9 @@ set.seed(385)
 train_df <- ether_df %>% sample_frac(0.5)
 test_df <- ether_df %>% setdiff(train_df)
 
-covariates_train <- model.matrix(price~. , data = train_df)[, -1]
+covariates_train <- model.matrix(price~. , data = train_df)[, c(-1, -9)]
 
-covariates_test <- model.matrix(price~. , data=test_df)[, -1]
+covariates_test <- model.matrix(price~. , data=test_df)[, c(-1, -9)]
 response_train <- train_df[1]
 response_test <- test_df[1]
 
@@ -516,17 +516,15 @@ library(tree)
 set.seed(385)
 
 ether_tree <- tree(price~., data = train_df)
+summary(ether_tree)
+plot(ether_tree)
+text(ether_tree, pretty = 0)
+cv_tree <- cv.tree(ether_tree)
+plot(cv_tree$size, cv_tree$dev, type = 'b')
+
+pruned_tree_df <- prune.tree(ether_tree, best = 5)
+plot(pruned_tree_df)
+text(pruned_tree_df, pretty = 0)
 ```
 
-```{r}
-contour_2 <- ggplot(data = ether_df, aes(x=log_10_block_size, y=log_10_price))+ 
-  geom_point(color='purple', alpha = 0.10) +                  
-  geom_density_2d(color = 'yellow', linemitre = 2)
-
-contour_2 
-```
-
-```{r}
-library(glmnet)
-```
 
