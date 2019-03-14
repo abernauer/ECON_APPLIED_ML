@@ -481,16 +481,20 @@ sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df))
 ```
 
 
-```{r}
+```{r 2) }
 library(glmnet)
 library(caret)
-library(vtreat)
+
 
 set.seed(385)
 
 
 train_df <- ether_df %>% sample_frac(0.5)
 test_df <- ether_df %>% setdiff(train_df)
+
+train_df <- train_df[, -9]
+
+test_df <- test_df[, -9]
 
 covariates_train <- model.matrix(price~. , data = train_df)[, c(-1, -9)]
 
@@ -506,10 +510,38 @@ plot.glmnet(ridge_model, xvar = "lambda")
 
 lasso_model <- glmnet(covariates_test, response_train, alpha = 1, lambda = grid, family = "mgaussian")
 
+ls(lasso_model)
 plot.glmnet(lasso_model, xvar = "lambda")
 
 
+
+
 ```
+
+
+
+```{r 2a)}
+set.seed(385)
+
+cv_lasso <- cv.glmnet(covariates_train, train_df$price, alpha=1)
+
+
+plot(cv_lasso)
+
+set.seed(385)
+cv_ridge <- cv.glmnet(covariates_train, train_df$price, alpha=0)
+
+plot(cv_ridge)
+
+best_lamda_ridge <- cv_ridge$lambda.1se
+
+
+
+
+```
+
+
+
 
 ```{r}
 library(tree)
@@ -525,6 +557,7 @@ plot(cv_tree$size, cv_tree$dev, type = 'b')
 pruned_tree_df <- prune.tree(ether_tree, best = 5)
 plot(pruned_tree_df)
 text(pruned_tree_df, pretty = 0)
+
 ```
 
 
