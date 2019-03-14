@@ -196,20 +196,18 @@ ggplot(ether_df) +
 ```
 
 
-```{r}
-ggplot(ether_df) + 
-  aes(log_10_trans_history) +
-  geom_histogram(fill = "purple", bins = 34) 
-
-```
 
 ```{r}
 p <- ggplot(ether_df) +
- aes(log_10_hash_rate) + geom_histogram(bins = 34, fill = "purple")
+ aes(log_10_hash_rate) + geom_histogram(bins = 34, fill = "purple") +
+  ggtitle(label = "Histogram of the distribution of hash rate log 10 scale") +
+  xlab("Distribution of log 10 trans")
   
   
 p
 ```
+Many of the $X_{1}, X_{2}, \dots, X_{n}$ i
+
 
 ```{r}
 ggplot(ether_df) +
@@ -336,7 +334,8 @@ augmented_reg_obj <- reg_obj %>%
 some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
   geom_point(color = "purple", size = 1) +
   labs(x="log(price)", y="y hat") +
-  ggtitle("Log price vs Y hat")
+  ggtitle("Log price vs Y hat") + 
+  scale_y_log10()
   
 
 some_plot
@@ -369,7 +368,8 @@ confint_plot +
 
 confint_plot + 
   scale_y_log10() +
-  ggtitle("Coefficients with standard errors log-log scale")
+  ggtitle("Coefficients with standard errors log-log scale") + 
+  scale_x_discrete()
 
 ```
 
@@ -411,7 +411,7 @@ some_plot_2 <- ggplot(data = augmented_reg_obj, aes(.resid)) +
 
 some_plot_2
 ```
-The majority of the residuals are distributed between -1 and 1 peaking at zero. 
+The majority of the residuals are distributed between -1 and 1 peaking at zero. This distribution is similar to the laplace distribution. 
 
 
 
@@ -499,16 +499,16 @@ test_df <- test_df[, -9]
 covariates_train <- model.matrix(price~. , data = train_df)[, c(-1, -9)]
 
 covariates_test <- model.matrix(price~. , data=test_df)[, c(-1, -9)]
-response_train <- train_df[1]
-response_test <- test_df[1]
+response_train <- as.numeric(unlist(train_df[1]))
+response_test <- as.numeric((unlist(test_df[1])))
 
 grid <- 10^seq(10, -2, length.out = 100)
 
-ridge_model <- glmnet(covariates_train, response_train, alpha = 0, lambda = grid, family ="mgaussian")
+ridge_model <- glmnet(covariates_train, response_train, alpha = 0, lambda = grid, family ="gaussian")
 
 plot.glmnet(ridge_model, xvar = "lambda")
 
-lasso_model <- glmnet(covariates_test, response_train, alpha = 1, lambda = grid, family = "mgaussian")
+lasso_model <- glmnet(covariates_test, response_train, alpha = 1, lambda = grid, family = "gaussian")
 
 ls(lasso_model)
 plot.glmnet(lasso_model, xvar = "lambda")
@@ -533,14 +533,30 @@ cv_ridge <- cv.glmnet(covariates_train, train_df$price, alpha=0)
 
 plot(cv_ridge)
 
-best_lamda_ridge <- cv_ridge$lambda.1se
+best_lambda_ridge <- cv_ridge$lambda.1se
+
+best_lambda_lasso <- cv_lasso$lambda.1se
+
+print(best_lamda_ridge)
 
 
+ridge_coefficients <- coef.glmnet(cv_ridge, newx = covariates_train,  s = best_lambda_ridge)
+
+
+
+lasso_coef <- coef.glmnet(cv_lasso, newx = covariates_train, s = best_lambda_lasso)
+
+print(lasso_coef)
+
+print(ridge_coefficients)
 
 
 ```
 
 
+```{r}
+ lasso_test_pred = predict.glmnet(lasso_model, p)
+```
 
 
 ```{r}
@@ -557,6 +573,7 @@ plot(cv_tree$size, cv_tree$dev, type = 'b')
 pruned_tree_df <- prune.tree(ether_tree, best = 5)
 plot(pruned_tree_df)
 text(pruned_tree_df, pretty = 0)
+
 
 ```
 
