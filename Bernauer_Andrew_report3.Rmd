@@ -8,7 +8,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, warning = FALSE)
 ```
 #Report 1
 
@@ -25,7 +25,7 @@ Ethereum is a decentralized, open source, block chain technology, featuring smar
 
 
 ###Data  
-```{r data carpentry}
+```{r data carpentry, cache=TRUE}
 
 
 library(scales)
@@ -101,7 +101,7 @@ xs <-function(x){(x-mean(x))/(2*sd(x))}
 
 
 ####Plots
-```{r price_vs_time, warning=FALSE}
+```{r price_vs_time, warning=FALSE, cache=TRUE}
  
 price_history <- ggplot(ether_df) +
   aes(date_utc, price) +
@@ -123,7 +123,7 @@ The price doesn't seem move at all significantly until 2016 so I decided to use 
 
 
 
-```{r block_size}
+```{r block_size, cache=TRUE}
 block_history <- ggplot(ether_df) +
   aes(date_utc, block_size) +
   geom_line(color ="purple") +
@@ -140,7 +140,7 @@ Block size rises exponentially begining in 2017. Prior to this it fluctuates up 
 
 
 
-```{r network hashrate}
+```{r network hashrate, cache=TRUE}
  hashrate_history <- ggplot(ether_df) + 
   aes(date_utc, hash_rate) +
   geom_line(color="purple") +
@@ -154,7 +154,7 @@ Block size rises exponentially begining in 2017. Prior to this it fluctuates up 
 
 Network hashrate growth blows up exponentially and seems to follow that trend overtime. 
 
-```{r transaction history, warning=FALSE}
+```{r transaction history, warning=FALSE, cache=TRUE}
  transaction_history <- ggplot(ether_df) + 
   aes(date_utc, transaction_history) +
   geom_line(color="purple") +
@@ -172,7 +172,7 @@ Transactions on the the Ethereum network are growing significantly overtime and 
 
 
 
-```{r bonus plot from eda, warning= FALSE}
+```{r bonus plot from eda, warning= FALSE, cache=TRUE}
  price_plot <- ggplot(ether_df) +
    aes(transaction_history, price) +
    geom_point(colour="purple") + 
@@ -318,18 +318,18 @@ The model in this case is $\ln(ether price) = \beta_{0} + $
 
 
 
-```{r}
+```{r, cache=TRUE}
 tidy_reg_obj <- reg_obj %>% 
    tidy()
 
-glance(tidy_reg_obj)
+tidy_reg_obj
 ```
 
 
 
 
 
-```{r augment}
+```{r augment, cache=TRUE}
 augmented_reg_obj <- reg_obj %>%
              augment()
 
@@ -356,7 +356,8 @@ confint_plot <- ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
   
 
 confint_plot +
-  ggtitle("Coefficients with standard errors")
+  ggtitle("Coefficients with standard errors") +
+  scale_y_discrete()
   
 
 ```
@@ -441,7 +442,7 @@ some_plot_3 +
 
 
 
-```{r knn regression, eval=FALSE}
+```{r knn regression, eval=FALSE, cache=TRUE}
 library(caret)
 
 set.seed(20)
@@ -483,39 +484,38 @@ sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df))
 ```{r}
 library(glmnet)
 library(caret)
+library(vtreat)
 
 set.seed(385)
 
-train_df <- ether_df %>% sample_frac(0.7)
+
+train_df <- ether_df %>% sample_frac(0.5)
 test_df <- ether_df %>% setdiff(train_df)
 
+covariates_train <- model.matrix(price~. , data = train_df)[, -1]
 
-design_mat <- model.matrix(press_f ,train_df)[, -1]
+covariates_test <- model.matrix(price~. , data=test_df)[, -1]
+response_train <- train_df[1]
+response_test <- test_df[1]
 
-price_y <- train_df[[1]]
+grid <- 10^seq(10, -2, length.out = 100)
 
-ridge_fit <- glmnet(design_mat, price_y, alpha = 0)
+ridge_model <- glmnet(covariates_train, response_train, alpha = 0, lambda = grid, family ="mgaussian")
 
-plot(ridge_fit , label = TRUE)
+plot.glmnet(ridge_model, xvar = "lambda")
 
-lasso_fit <- glmnet(design_mat, price_y, alpha = 1)
+lasso_model <- glmnet(covariates_test, response_train, alpha = 1, lambda = grid, family = "mgaussian")
+
+plot.glmnet(lasso_model, xvar = "lambda")
 
 
-
-nzv <- nearZeroVar(ether_df[, -5:-8], saveMetrics = TRUE)
-
-nzv$percentUnique
 ```
 
 ```{r}
-contour <- ggplot(data = ether_df, aes(x=log_10_trans_history, y=log_10_price)) + 
-  geom_point(color='purple', alpha = 0.10) +                  
-  geom_density_2d(color='yellow') +
-  annotation_logticks() 
-  
-contour 
+library(tree)
+set.seed(385)
 
-
+ether_tree <- tree(price~., data = train_df)
 ```
 
 ```{r}
