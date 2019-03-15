@@ -568,12 +568,31 @@ ether_tree <- tree(price~., data = train_df)
 summary(ether_tree)
 plot(ether_tree)
 text(ether_tree, pretty = 0)
-cv_tree <- cv.tree(ether_tree)
+cv_tree <- cv.tree(ether_tree, K=10 )
 plot(cv_tree$size, cv_tree$dev, type = 'b')
 
 pruned_tree_df <- prune.tree(ether_tree, best = 5)
 plot(pruned_tree_df)
 text(pruned_tree_df, pretty = 0)
+
+treee_fit = predict(pruned_tree_df, newdata = test_df)
+
+mean((response_test - treee_fit) ^ 2)
+
+
+```
+```{r, cache=TRUE}
+for (i in c(1:100)){
+  set.seed(i)
+  tree_t <- tree(price~., train_df)
+  prune_tree_t <- prune.tree(tree_t, best = 5)
+  
+  single_tree_est <- predict(prune_tree_t, newdata = test_df)
+ z <- (mean( single_tree_est - test_df$price) ^ 2)
+}
+  
+z
+
 
 
 ```
