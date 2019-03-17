@@ -1,5 +1,5 @@
 ---
-title: "Bernauer_Andrew_report2"
+title: "Bernauer_Andrew_report3"
 author: "Andrew Bernauer"
 date: "February 12, 2019"
 output:
@@ -212,7 +212,7 @@ ggplot(ether_df) +
 
 ```
 
-Likewise, blocksize has this similar property this sort of distribution doesn't suit itself well standard machine learning algorithms given the multiple peaks. Most of the variables follow gamma distributions in the cartesian coordinate scale. I declined to illustrate those graphs.
+Likewise, blocksize has this similar property this sort of distribution doesn't suit itself well, for standard machine learning algorithms given the multiple peaks. Most of the variables follow gamma distributions in the cartesian coordinate scale. I declined to illustrate those graphs.
 
 
 #####Summary Code
@@ -272,7 +272,15 @@ log_ols <- lm(log(price) ~ log(transaction_history), data = ether_df, subset = p
 
 ###Regression Diagnostics 
 
-The following code block returns the adjusted $R^{2}$ statistics for the five regressions I ran.
+The following code block returns the adjusted $\hat{R}^{2}_{\text{adjusted}}$ statistics for the five regressions I ran.
+
+
+```{r, cache=TRUE}
+tidy_reg_obj <- reg_obj %>% 
+   tidy()
+
+tidy_reg_obj
+```
 
 
 
@@ -303,21 +311,23 @@ glance_mols$adj.r.squared
 glance_log_ols$adj.r.squared
 
 ```
-The log-log model with all the continuous predictors included had the highest adjusted $R^{2} = 0.9363884 $ of all the regressions run. A log-log model can be interpreted as a the percentage change in Y by a one percentage change in X. Accordingly, if X increase by 1 we expect a $\beta_{1}$ percent change in Y. 
 
-
-The model in this case is $\ln(ether price) = \beta_{0} + $
-
+All of the coefficients return p values significant at the .10 cut off level while log block size is close. The $F$ statistic is significant; however the BIC and AIC below could be lower.
 
 
 
+The log-log model with all the continuous predictors included had the highest adjusted 
+$\hat{R}^{2}_{\\text{adjusted}}} = 0.9363884$ of all the regressions ran. A model excluding the log block size term comes in a close second. Another, option is the last model with just log transaction as a predictor. 
 
-```{r, cache=TRUE}
-tidy_reg_obj <- reg_obj %>% 
-   tidy()
+Predictors performing the best presented the following equation $$ \hat{y} = -10.65 + 0.072 \log(\text{Blocksize}) + 1.0007 \log(\text{TransactionHistory}) + 0.222\log(\text{Hashrate}) $$.
 
-tidy_reg_obj
-```
+Which can be interpreted as a one percent increase in Blocksize resulting in a 7.2 percent increase in average Ether price holding all other variables equal, or fixed. The same interpretation applies to the other predictors with there respective coefficients.
+
+
+
+
+
+
 
 
 
@@ -336,6 +346,9 @@ some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
 
 some_plot
 ```
+
+
+
 The preceding plot points to the non-linear nature of the data set. It may improve modeling results to include a polynomial term in future models.
 
 
@@ -560,7 +573,7 @@ mean((response_test - ridge_test_pred) ^ 2)
 ```
 
 
-```{r}
+```{r#3 a-, }
 library(tree)
 set.seed(385)
 
@@ -577,6 +590,7 @@ text(pruned_tree_df, pretty = 0)
 
 treee_fit = predict(pruned_tree_df, newdata = test_df)
 
+
 mean((response_test - treee_fit) ^ 2)
 
 
@@ -584,6 +598,7 @@ mean((response_test - treee_fit) ^ 2)
 ```{r, cache=TRUE}
 for (i in c(1:100)){
   set.seed(i)
+  browser()
   tree_t <- tree(price~., train_df)
   prune_tree_t <- prune.tree(tree_t, best = 5)
   
@@ -596,5 +611,32 @@ z
 
 
 ```
+```{r #4,}
+set.seed(385)
+
+statistic <- function(x, n=100, best=5){
+  tree_1 <- tree(price~., data = train_df)
+  pruned_tree_1 <- prune.tree(tree_1, k=10, best = best)
+  
+ return(  predict(pruned_tree_1) )
+  
+  
+  
+}
+
+ result <- boot::boot(data = test_df, statistic, R=100, sim = "ordinary")
+ 
+mean((ether_df$price - result$t0) ^ 2)
+
+
+```
+
+The mse of the bootstrapped trees is not a performance upgrade over the results from the previous performance of the regression trees trained on the training data. This is not completely surprising as we would expect the model to perform better on our training data and to underperform on the test data. Surprisingly though I was able to get a mse that was significanctly better accross multiple seeds and fitting trees which is promising, for future reports.  Of course there is a trade-off in that we don't want our model to overfit the training data and not perform well on the test set. Returned
+
+
+
+### Conclusion 
+
+The performance of regression trees under multiple seeds proves to be a promising development as we start covering boosting, bagging, and random forests in further reports. Ridge was a decent improvement over. Additionally, the multimodel nature of some of the distribution could point to using a different performance metric than MSE possibly MAD mean absolute deviations, or MAE mean absolute errors. 
 
 
