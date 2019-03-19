@@ -10,6 +10,9 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE, warning = FALSE)
 ```
+
+
+
 #Report 1
 
 
@@ -317,7 +320,7 @@ All of the coefficients return p values significant at the .10 cut off level whi
 
 
 The log-log model with all the continuous predictors included had the highest adjusted 
-$\hat{R}^{2}_{\\text{adjusted}}} = 0.9363884$ of all the regressions ran. A model excluding the log block size term comes in a close second. Another, option is the last model with just log transaction as a predictor. 
+$\hat{R}^{2}_{\text{adjusted}} = 0.9363884$ of all the regressions ran. A model excluding the log block size term comes in a close second. Another, option is the last model with just log transaction as a predictor. 
 
 Predictors performing the best presented the following equation $$ \hat{y} = -10.65 + 0.072 \log(\text{Blocksize}) + 1.0007 \log(\text{TransactionHistory}) + 0.222\log(\text{Hashrate}) $$.
 
@@ -340,8 +343,8 @@ augmented_reg_obj <- reg_obj %>%
 some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
   geom_point(color = "purple", size = 1) +
   labs(x="log(price)", y="y hat") +
-  ggtitle("Log price vs Y hat") + 
-  scale_y_log10()
+  ggtitle("Log price vs Y hat") 
+  
   
 
 some_plot
@@ -490,7 +493,12 @@ sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df))
 ```
 
 
-```{r 2) }
+#Report 3
+
+
+## Ridge and Lasso Regressions
+
+```{r 2) d) }
 library(glmnet)
 library(caret)
 
@@ -519,13 +527,15 @@ plot.glmnet(ridge_model, xvar = "lambda")
 
 lasso_model <- glmnet(covariates_test, response_train, alpha = 1, lambda = grid, family = "gaussian")
 
-ls(lasso_model)
-plot.glmnet(lasso_model, xvar = "lambda")
+
+plot.glmnet(lasso_model, xvar = "lambda", label = "true")
 
 
 
 
 ```
+
+
 
 
 
@@ -548,7 +558,23 @@ best_lambda_lasso <- cv_lasso$lambda.1se
 
 print(best_lambda_ridge)
 
+print(best_lambda_lasso)
 
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+```{r 2) e)}
 ridge_coefficients <- coef.glmnet(cv_ridge, newx = covariates_train,  s = best_lambda_ridge)
 
 
@@ -558,29 +584,38 @@ lasso_coef <- coef.glmnet(cv_lasso, newx = covariates_train, s = best_lambda_las
 print(lasso_coef)
 
 print(ridge_coefficients)
-
-
 ```
 
 
-```{r}
+
+
+
+
+
+```{r 2) g),}
 lasso_test_pred = predict.glmnet(lasso_model, newx = covariates_test, s=best_lambda_lasso)
 
 ridge_test_pred = predict.glmnet(ridge_model, newx = covariates_test, s=best_lambda_ridge)
+
 mean((response_test - lasso_test_pred) ^ 2)
 
 mean((response_test - ridge_test_pred) ^ 2)
 ```
 
+The **Lasso ** model returned an $MSE$ of 88166.71 while the **Ridge** model returned a more modest $MSE$ of 6682.426 on the test sets respectively. 
+ 
 
-```{r#3 a-, }
+
+
+
+## Regression trees 
+
+```{r 3) a-d, }
 library(tree)
 set.seed(385)
 
 ether_tree <- tree(price~., data = train_df)
-summary(ether_tree)
-plot(ether_tree)
-text(ether_tree, pretty = 0)
+
 cv_tree <- cv.tree(ether_tree, K=10 )
 plot(cv_tree$size, cv_tree$dev, type = 'b')
 
@@ -591,52 +626,84 @@ text(pruned_tree_df, pretty = 0)
 treee_fit = predict(pruned_tree_df, newdata = test_df)
 
 
-mean((response_test - treee_fit) ^ 2)
+single_tree_fit <- mean((response_test - treee_fit) ^ 2)
 
-
-```
-```{r, cache=TRUE}
-for (i in c(1:100)){
-  set.seed(i)
-  browser()
-  tree_t <- tree(price~., train_df)
-  prune_tree_t <- prune.tree(tree_t, best = 5)
-  
-  single_tree_est <- predict(prune_tree_t, newdata = test_df)
- z <- (mean( single_tree_est - test_df$price) ^ 2)
-}
-  
-z
+single_tree_fit
 
 
 
 ```
-```{r #4,}
+
+Variables used in the final pruned tree are: transaction history which represent the number of transactions on the Ethereum block chain and unix time stamp which is a running count of the seconds since Jan 01 1970. The root of the tree includes a split with the variable transaction history splitting on the condition that transaction history less than one hundred sixty two thousand six hundred and eighty three transactions.
+
+The pruned regression tree contains a total of five terminal nodes each displaying the average prediction based on those splits in the tree. The splits function to partition space into mutually exclusive regions. 
+
+
+
+
+
+
+
+
+## Bootstrapped trees
+
+```{r 4)a-c, cache=TRUE}
 set.seed(385)
 
 statistic <- function(x, n=100, best=5){
   tree_1 <- tree(price~., data = train_df)
   pruned_tree_1 <- prune.tree(tree_1, k=10, best = best)
   
- return(  predict(pruned_tree_1) )
+ return(  predict(pruned_tree_1, newdata = test_df) )
   
   
   
 }
 
- result <- boot::boot(data = test_df, statistic, R=100, sim = "ordinary")
+ result <- boot::boot(data = train_df, statistic, R=100, sim = "ordinary")
  
-mean((ether_df$price - result$t0) ^ 2)
+mean((test_df$price - result$t0) ^ 2)
 
 
 ```
 
-The mse of the bootstrapped trees is not a performance upgrade over the results from the previous performance of the regression trees trained on the training data. This is not completely surprising as we would expect the model to perform better on our training data and to underperform on the test data. Surprisingly though I was able to get a mse that was significanctly better accross multiple seeds and fitting trees which is promising, for future reports.  Of course there is a trade-off in that we don't want our model to overfit the training data and not perform well on the test set. Returned
+The mse of the bootstrapped trees is a performance upgrade over the results from the previous performance of the regression trees trained on the training data. This is not completely surprising as we would expect the model to perform better on our training data and to underperform on the test data. Surprisingly though I was able to get a mse that was significanctly better accross multiple seeds and fitting trees which is promising, for future reports.  Of course there is a trade-off in that we don't want our model to overfit the training data and not perform well on the test set. Returned
 
 
 
 ### Conclusion 
 
 The performance of regression trees under multiple seeds proves to be a promising development as we start covering boosting, bagging, and random forests in further reports. Ridge was a decent improvement over. Additionally, the multimodel nature of some of the distribution could point to using a different performance metric than MSE possibly MAD mean absolute deviations, or MAE mean absolute errors. 
+
+
+## Bonus 
+
+```{r, cache=TRUE} 
+
+ 
+for (i in c(1:100)){
+ 
+  set.seed(i)
+ 
+
+ 
+  tree_t <- tree(price~., train_df)
+ 
+  prune_tree_t <- prune.tree(tree_t, best = 5)
+
+ 
+  
+ 
+  single_tree_est <- predict(prune_tree_t, newdata = test_df)
+
+ 
+ z <- (mean( single_tree_est - test_df$price) ^ 2)
+ 
+}
+
+ 
+  
+ 
+z
 
 
