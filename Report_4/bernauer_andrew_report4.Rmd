@@ -1,0 +1,725 @@
+---
+title: "Bernauer_Andrew_report4"
+author: "Andrew Bernauer"
+date: "April 10, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, warning = FALSE)
+```
+
+#Difficult Learning Problems in Economics: Predicting Ether Price
+
+
+#Report 1
+
+
+##Introduction 
+For the semester long project I will be attempting to predict the known response variable ethereum price in terms of the predictors: block size, network hash rate growth rate, transactions, day of the week, and month. The project is regression based and not a classification task. Therefore the project will fall under the umbrella of supervised machine learning.    
+
+
+
+$$ether price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
+
+Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. 
+
+
+
+###Data  
+```{r data carpentry, cache=TRUE}
+
+
+library(scales)
+library(ggplot2)
+library(lubridate)
+library(purrr)
+library(dplyr)
+library(readr)
+library(tibble)
+library(errorist)
+library(broom)
+library(caret)
+library(tidyr)
+library(randomForest)
+
+#substitute in the path on your machine to files 
+ethereum_transaction_history <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumTransactionHistory.csv")
+
+ethereum_block_size <-read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumBlockSizeHistory.csv"
+)
+
+ethereum_network_hash_rate <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumNetworkHashRateGrowthRate.csv")
+
+ether_price <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EtherPriceHistory(USD).csv")
+
+# creating variable for day  
+day_of_week <- 
+  lubridate::mdy(ether_price$`Date(UTC)`) %>%
+  wday( ,label=TRUE)  %>%
+  sort()
+
+# creating variable for month
+month_of_year <-
+  lubridate::mdy(ether_price$`Date(UTC)`) %>%
+  month( ,label=TRUE) %>%
+  sort()
+
+signedlog10 <- function(x) {
+  ifelse(abs(x) <= 1, 0, sign(x)*log10(abs(x)))
+}
+
+log_price <- signedlog10(ether_price[[3]])
+
+log_history <- signedlog10(ethereum_transaction_history[[3]])
+
+log_block_size <- signedlog10(ethereum_block_size[[3]])
+
+log_hash_rate <- signedlog10(ethereum_network_hash_rate[[3]])
+
+summary(log_price)
+
+summary(log_history)
+
+# construct list of variables to coerce into a tibble
+l_ether <- list( price = ether_price[[3]],
+                 transaction_history = as.integer(ethereum_transaction_history[[3]]),
+                 block_size = as.integer(ethereum_block_size[[3]]),
+                 hash_rate = ethereum_network_hash_rate[[3]], 
+                 day = day_of_week, 
+                 month = month_of_year,
+                 date_utc = mdy(ethereum_network_hash_rate$`Date(UTC)`),
+                 unix_time_stamp = ethereum_network_hash_rate$UnixTimeStamp,
+                 log_10_price = log_price,
+                 log_10_trans_history = log_history,
+                 log_10_block_size = log_block_size,
+                 log_10_hash_rate = log_hash_rate)
+
+ether_df <- as_tibble(l_ether)
+
+
+xs <-function(x){(x-mean(x))/(2*sd(x))}
+
+```
+
+
+
+####Plots
+```{r price_vs_time, warning=FALSE, cache=TRUE}
+ 
+price_history <- ggplot(ether_df) +
+  aes(date_utc, price) +
+  geom_line(color="purple") + 
+  xlab("Year")+
+  ggtitle("Ethereum Price USD over time") + 
+  scale_y_log10() 
+  
+  
+  
+
+ price_history
+```
+
+
+The price doesn't seem move at all significantly until 2016 so I decided to use a log transformation to the y axis. This removed a large amount the visual noise and made the price change overtime more evident. Besides that ethereum price starts to rise from around a dollar price to hovering around the ten dollars between 2016 and 2017. Peaks at a value of 1000 dollars in 2018.   
+
+
+
+
+
+```{r block_size, cache=TRUE}
+block_history <- ggplot(ether_df) +
+  aes(date_utc, block_size) +
+  geom_line(color ="purple") +
+  scale_y_log10() +
+  xlab("Year") +
+  ylab("Block Size") +
+  ggtitle("Ethereum Block Size Over Time")
+  
+
+block_history
+```
+
+Block size rises exponentially begining in 2017. Prior to this it fluctuates up and down between 1000 and 3000 which might be pointing to autocorrelation. In this same time period it peaks violently at 10000. Reaching a maximum of over 30000 in 2018. Another log tranformation was used in this plot.  
+
+
+
+```{r network hashrate, cache=TRUE}
+ hashrate_history <- ggplot(ether_df) + 
+  aes(date_utc, hash_rate) +
+  geom_line(color="purple") +
+  scale_y_log10() +
+  xlab("Year") +
+  ylab("Network Hash rate Growth rate") +
+  ggtitle("Ethereum Network Hash rate growth over time")
+
+ hashrate_history
+```
+
+Network hashrate growth blows up exponentially and seems to follow that trend overtime. 
+
+```{r transaction history, warning=FALSE, cache=TRUE}
+ transaction_history <- ggplot(ether_df) + 
+  aes(date_utc, transaction_history) +
+  geom_line(color="purple") +
+  xlab("Year") +
+  ylab("Transactions") +
+  scale_y_log10() +
+  ggtitle("Ethereum Transactions over time")
+
+ transaction_history
+```
+
+Transactions on the the Ethereum network are growing significantly overtime and more people are embracing it's use.
+
+
+
+
+
+```{r bonus plot from eda, warning= FALSE, cache=TRUE}
+ price_plot <- ggplot(ether_df) +
+   aes(transaction_history, price) +
+   geom_point(colour="purple") + 
+   facet_wrap(~month) +
+   geom_smooth(colour="yellow", alpha = 0.25) 
+
+ price_plot +
+   scale_x_log10("Transactions") +
+   scale_y_log10("Ethereum Price USD($)") +
+   ggtitle("Ethereum Price USD($) vs Transactions facetted by month") 
+ 
+```
+
+There appears to be some clustering of Ether price as transactions increases on the block chain increase isolating by month.
+
+
+
+```{r}
+p <- ggplot(ether_df) +
+ aes(log_10_hash_rate) + geom_histogram(bins = 34, fill = "purple") +
+  ggtitle(label = "Histogram of the distribution of hash rate log 10 scale") +
+  xlab("Distribution of log 10 transactions")
+  
+  
+p
+```
+
+Many of the $X_{1}, X_{2}, \dots, X_{n}$ or predictor variables in the dataset follow skewed distribution and feature multiple peaks. This could be pointing to the presence of sub-populations within the underlying data. 
+
+
+```{r hist block_size,}
+ggplot(ether_df) +
+  aes(log_block_size) + geom_histogram(bins = 34, fill = 'purple') +
+  xlab("Distribution of Ethereum BlockSize log 10 scale") +
+  ylab("Count") +
+  ggtitle("Histogram of Ethereum block size")
+
+```
+
+Likewise, blocksize has this similar property this sort of distribution doesn't suit itself well, for standard machine learning algorithms given the multiple peaks. Most of the variables follow gamma distributions in the cartesian coordinate scale. I declined to illustrate those graphs.
+
+
+#####Summary Code
+
+```{r tidy_summary_code}
+
+#summary stats for ethereum price  
+ether_df %>% summarise(mean_price = mean(price, na.rm = TRUE), median_price = median(price), sd_price = sd(price), iqr_price = IQR(price), n = n(), mad_price = mad(price), min_price = min(price), max_price = max(price))
+
+#summary stats for ethereum transaction history
+ether_df %>% summarise(mean_transaction_history = mean(transaction_history), median_transaction_history = median(transaction_history), sd_transaction_history = sd(transaction_history), iqr_transaction_history = IQR(transaction_history), n = n(), mad_transaction_history = mad(transaction_history), min_transaction_history = min(transaction_history), max_transaction_history = max(transaction_history))
+
+#summary stats for ethereum block size
+ether_df %>% summarise(mean_block_size = mean(block_size), median_block_size = median(block_size), sd_block_size = sd(block_size), iqr_block_size = IQR(block_size), n = n(), mad_block_size = mad(block_size), min_block_size = min(block_size), max_block_size = max(block_size))
+
+#summary stats for hash rate
+ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = median(hash_rate), sd_hash_rate= sd(hash_rate), iqr_hash_rate = IQR(hash_rate), n = n(), mad_hash_rate = mad(hash_rate), min_hash_rate = min(hash_rate), max_hash_rate = max(hash_rate))
+
+
+
+
+```
+
+
+#Report 2
+
+
+
+
+
+##Regressions
+
+
+```{r regressions,}
+#running five regressions 
+ 
+poly_reg <- lm(price ~ poly(transaction_history, 5) + poly(block_size, 5) + poly(hash_rate, 5), ether_df )
+
+
+reg_obj <- lm(log(price) ~ log(block_size) + log(transaction_history) + log(hash_rate), data = ether_df,  subset = price > 0)
+
+reg_obj_2 <- lm(log(price) ~ log(transaction_history) + log(hash_rate), data = ether_df, subset = price > 0)
+
+
+reg_obj_3 <- lm(price ~ I(block_size)^2 + sqrt(transaction_history) + hash_rate, data = ether_df)
+
+mols <- lm(price ~ block_size + transaction_history + hash_rate, data = ether_df)
+
+log_ols <- lm(log(price) ~ log(transaction_history), data = ether_df, subset = price > 0)
+
+
+ 
+
+```
+
+
+
+###Regression Diagnostics 
+
+The following code block returns the adjusted $\hat{R}^{2}_{\text{adjusted}}$ statistics for the five regressions I ran.
+
+
+```{r, cache=TRUE}
+tidy_reg_obj <- reg_obj %>% 
+   tidy()
+
+tidy_reg_obj
+```
+
+
+
+```{r}
+glance_tidy_poly <- glance(poly_reg)
+
+glance_reg_obj <- glance(reg_obj)
+
+glance_reg_obj_2 <- glance(reg_obj_2)
+
+glance_reg_obj_3 <- glance(reg_obj_3)
+
+glance_mols <- glance(mols)
+
+glance_log_ols <- glance(log_ols)
+
+
+glance_tidy_poly$adj.r.squared
+
+glance_reg_obj$adj.r.squared
+
+glance_reg_obj_2$adj.r.squared
+
+glance_reg_obj_3$adj.r.squared
+
+glance_mols$adj.r.squared
+
+glance_log_ols$adj.r.squared
+
+```
+
+All of the coefficients return p values significant at the .10 cut off level while log block size is close. The $F$ statistic is significant; however the BIC and AIC below could be lower.
+
+
+
+The log-log model with all the continuous predictors included had the highest adjusted 
+$\hat{R}^{2}_{\text{adjusted}} = 0.9363884$ of all the regressions ran. A model excluding the log block size term comes in a close second. Another, option is the last model with just log transaction as a predictor. 
+
+Predictors performing the best presented the following equation $$ \hat{y} = -10.65 + 0.072 \log(\text{Blocksize}) + 1.0007 \log(\text{TransactionHistory}) + 0.222\log(\text{Hashrate}) $$.
+
+Which can be interpreted as a one percent increase in Blocksize resulting in a 7.2 percent increase in average Ether price holding all other variables equal, or fixed. The same interpretation applies to the other predictors with there respective coefficients.
+
+
+
+
+
+
+
+
+
+
+
+```{r augment, cache=TRUE}
+augmented_reg_obj <- reg_obj %>%
+             augment()
+
+some_plot <- ggplot(data = augmented_reg_obj, aes(log.price., .hat)) +
+  geom_point(color = "purple", size = 1) +
+  labs(x="log(price)", y="y hat") +
+  ggtitle("Log price vs Y hat") 
+  
+  
+
+some_plot
+```
+
+
+
+The preceding plot points to the non-linear nature of the data set. It may improve modeling results to include a polynomial term in future models.
+
+
+
+
+
+```{r, warning=FALSE}
+tidy_conf_it <- tidy(reg_obj, conf.int = TRUE)
+
+confint_plot <- ggplot(tidy_conf_it, aes(term, estimate, color=term)) +
+  geom_point() +
+  geom_errorbar(aes(ymin=estimate - 1.96*std.error, ymax=estimate + 1.96*std.error)) 
+  
+
+confint_plot +
+  ggtitle("Coefficients with standard errors") +
+  scale_x_discrete()
+  
+
+```
+
+The previous graph is misleading due to the scale with a scale adjustment it is more insightful.
+
+
+
+
+
+
+```{r proper scale, warning=FALSE}
+
+confint_plot + 
+  scale_y_log10() +
+  ggtitle("Coefficients with standard errors log-log scale") + 
+  scale_x_discrete()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+some_plot_2 <- ggplot(data = augmented_reg_obj, aes(.resid)) + 
+  geom_histogram(binwidth = .3, fill = "purple") + 
+  labs(x="Residuals", y="Frequency") +
+  ggtitle("Distribution of Residuals")
+  
+  
+
+some_plot_2
+```
+The majority of the residuals are distributed between -1 and 1 peaking at zero. This distribution is similar to the laplace distribution. 
+
+
+
+```{r, warning= FALSE}
+some_plot_3 <- ggplot(augmented_reg_obj, aes(log.price., .resid)) +
+  geom_point(color = "purple", size = 1) +
+  geom_hline(color = "yellow", yintercept = 0) 
+
+some_plot_3 + 
+  labs(x="Log Ether Price", y="Residuals")
+
+
+
+
+```
+
+The Residuals plotted against Ether Price suggest there is possible non-normality in the distribution of the errors.
+
+
+
+
+
+
+##KNN Regression
+
+
+
+
+
+
+
+```{r knn regression, eval=FALSE, cache=TRUE}
+library(caret)
+
+set.seed(20)
+
+train_index <- createDataPartition(ether_df$price, p = .8, list = FALSE, times = 1)
+
+head(train_index)
+
+ether_df_train <- ether_df[train_index, ]
+
+ether_df_test <- ether_df[-train_index, ]
+
+tr_control <- trainControl(method = "repeatedcv",
+             number = 10,
+             repeats = 3
+             )
+knn_model <-  train(price ~., data = ether_df,
+                    method = "knn",
+                    preProcess = c("center", "scale"), 
+                    trControl = tr_control, 
+                    metric = "RMSE",
+                    tuneLength = 10
+                    )
+
+knn_model
+
+knn_model$results
+
+y_hat <- predict(knn_model, newdata = ether_df)
+
+predicted <- predict(knn_model, ether_df)
+
+plot(ether_df$price, predicted)
+sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df)) 
+
+```
+
+
+#Report 3
+
+
+## Ridge and Lasso Regressions
+
+```{r 1) 2) d) }
+library(glmnet)
+library(caret)
+
+
+set.seed(385)
+
+
+train_df <- ether_df %>% sample_frac(0.5)
+test_df <- ether_df %>% setdiff(train_df)
+
+train_df <- train_df[, -9]
+
+test_df <- test_df[, -9]
+
+covariates_train <- model.matrix(price~. , data = train_df)[, c(-1, -9)]
+
+covariates_test <- model.matrix(price~. , data=test_df)[, c(-1, -9)]
+response_train <- as.numeric(unlist(train_df[1]))
+response_test <- as.numeric((unlist(test_df[1])))
+
+grid <- 10^seq(10, -2, length.out = 100)
+
+ridge_model <- glmnet(covariates_train, response_train, alpha = 0, lambda = grid, family ="gaussian")
+
+plot.glmnet(ridge_model, xvar = "lambda")
+
+lasso_model <- glmnet(covariates_test, response_train, alpha = 1, lambda = grid, family = "gaussian")
+
+
+plot.glmnet(lasso_model, xvar = "lambda", label = "true")
+
+
+
+
+```
+
+A $\lambda = 49.75$, for the hyperparameter of the ridge model significantly penalizes the coefficients of the model. Shrinking all of the coefficients close to zero displayed in the plot above. 
+
+Additionally, the lasso model has a $\lambda = 2.26$ which ends up culling eleven of the twenty five coefficients assocaited with the model matrix. Which is evident in the plot above. 
+
+
+
+
+```{r 2a)}
+set.seed(385)
+
+cv_lasso <- cv.glmnet(covariates_train, train_df$price, alpha=1)
+
+
+plot(cv_lasso)
+
+set.seed(385)
+cv_ridge <- cv.glmnet(covariates_train, train_df$price, alpha=0)
+
+plot(cv_ridge)
+
+best_lambda_ridge <- cv_ridge$lambda.1se
+
+best_lambda_lasso <- cv_lasso$lambda.1se
+
+print(best_lambda_ridge)
+
+print(best_lambda_lasso)
+
+
+
+
+```
+
+I elect to pick a lambda within one standard deviation as a way to avoid overfitting the model to the training data and performing poorly on the test data. 
+
+
+
+
+
+
+
+
+```{r 2) e)}
+ridge_coefficients <- coef.glmnet(cv_ridge, newx = covariates_train,  s = best_lambda_ridge)
+
+
+
+lasso_coef <- coef.glmnet(cv_lasso, newx = covariates_train, s = best_lambda_lasso)
+
+print(lasso_coef)
+
+print(ridge_coefficients)
+```
+
+Lasso as an operator ending up culling the following coefficients: day.L, day.Q, day.C, day^4, Month.L, date_utc, unix_timestamp, and the other coefficients for transaction history, block size, hash rate in the log 10 scale. The model coefficients are not the most interpratable as they were produced via the model matrix 
+
+The same can be said for the ridge regression model.
+
+
+
+
+
+```{r 2) g),}
+lasso_test_pred = predict.glmnet(lasso_model, newx = covariates_test, s=best_lambda_lasso)
+
+ridge_test_pred = predict.glmnet(ridge_model, newx = covariates_test, s=best_lambda_ridge)
+
+mean((response_test - lasso_test_pred) ^ 2)
+
+mean((response_test - ridge_test_pred) ^ 2)
+```
+
+The **Lasso ** model returned an $MSE$ of 88166.71 while the **Ridge** model returned a more modest $MSE$ of 6682.426 on the test sets respectively. The Ridge regression model returns the lowest $MSE $of the two methods though the performance is not great.
+ 
+
+
+
+
+## Regression trees 
+
+```{r 3) a-d, }
+library(tree)
+set.seed(385)
+
+ether_tree <- tree(price~., data = train_df)
+
+cv_tree <- cv.tree(ether_tree, K=10 )
+plot(cv_tree$size, cv_tree$dev, type = 'b')
+
+pruned_tree_df <- prune.tree(ether_tree, best = 5)
+plot(pruned_tree_df)
+text(pruned_tree_df, pretty = 0)
+
+treee_fit = predict(pruned_tree_df, newdata = test_df)
+
+
+single_tree_fit <- mean((response_test - treee_fit) ^ 2)
+
+single_tree_fit
+
+
+
+```
+
+Variables used in the final pruned tree are: transaction history which represent the number of transactions on the Ethereum block chain and unix time stamp which is a running count of the seconds since Jan 01 1970. The root of the tree includes a split with the variable transaction history splitting on the condition that if transaction history is less than one hundred sixty two thousand six hundred and eighty three transactions. After that split follows, another if then style statement with $\text{transaction history} < 162,683$ yielding an average ether price prediction of 13.83. On the other hand if that condition is not satisfied average ether price yields a prediction of 288.50. The splits on the other side of the tree include a split, for $\text{transaction history} < 876,929 $, and if $\text{transaction history} > 867,929$ yields an average ether price prediction of $ 960.40$. Under the split above is another split under unix time which essentially prefers ether price fall over time.  
+
+The pruned regression tree contains a total of five terminal nodes each displaying the average prediction based on those splits in the tree. The splits function to partition space into mutually exclusive regions. 
+
+
+
+
+
+
+
+
+## Bootstrapped trees
+
+```{r 4)a-c, cache=TRUE}
+set.seed(385)
+
+statistic <- function(x, n=100, best=5){
+  tree_1 <- tree(price~., data = train_df)
+  pruned_tree_1 <- prune.tree(tree_1, k=10, best = best)
+  
+ return(  predict(pruned_tree_1, newdata = test_df) )
+  
+  
+  
+}
+
+ result <- boot::boot(data = train_df, statistic, R=100, sim = "ordinary")
+ 
+mean((test_df$price - result$t0) ^ 2)
+
+
+```
+
+The $MSE$ of the bootstrapped trees is a performance upgrade over the results from the previous performance of the single regression tree trained on the training data. This is not completely surprising as we would expect the model to perform better on our training data and to underperform on the test data. Surprisingly though I was able to get an  $MSE$ that was significanctly better accross multiple seeds and fitting trees which is promising, for future reports.  Of course there is a trade-off in that we don't want our model to overfit the training data and not perform well on the test set. 
+
+
+
+### Conclusion 
+
+The performance of regression trees under multiple seeds proves to be a promising development as we start covering boosting, bagging, and random forests in further reports. Ridge was a decent improvement over a single tree aproach and performed roughly similar too . Additionally, the multimodal nature of some of the distribution could point to using a different performance metric than MSE possibly MAD mean absolute deviations, or MAE mean absolute errors. 
+
+
+
+#### Report 4
+
+```{r #1, #2}
+set.seed(385)
+
+new_train_ether <- ether_df[,  -9] %>%
+  sample_frac(0.7) 
+  
+new_test_ether <- ether_df[,  -9] %>%
+  setdiff(new_train_ether)
+
+bagged.ether <- randomForest(price~., data = new_train_ether,
+                             ntree=400, mtry=10/3, importance=TRUE)
+bagged.ether
+
+
+
+```
+
+```{r}
+plot(bagged.ether)
+```
+
+
+The Errors start to level off as you begun approaching 50 to 75 tree range. Increases the number of trees does not impact the error rate that much as the number of trees gets large. 
+
+```{r}
+yhat_bagged <- predict(bagged.ether, newdata = new_test_ether)
+
+ggplot() + geom_point(aes(x = price, y = yhat_bagged), data = new_test_ether, color = "purple", alpha = 0.50) + geom_abline(color = "yellow") + 
+  labs(x="Ether Price", y="Bagging estimation of Ether Price")
+  
+```
+
+The Bagging estimation of Ether Price presents some of the best predictions on the test set of all methods. However the fit is not as tight as Ether Price increases. 
