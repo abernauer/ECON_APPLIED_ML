@@ -723,3 +723,17 @@ ggplot() + geom_point(aes(x = price, y = yhat_bagged), data = new_test_ether, co
 ```
 
 The Bagging estimation of Ether Price presents some of the best predictions on the test set of all methods. However the fit is not as tight as Ether Price increases. 
+
+```{r}
+round(mean((new_test_ether$price - yhat_bagged)^2), 2)
+```
+
+
+```{r, 2e)}
+importance(bagged.ether)
+```
+
+```{r}
+varImpPlot(bagged.ether)
+```
+
