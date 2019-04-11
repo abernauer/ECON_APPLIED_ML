@@ -788,6 +788,41 @@ for(mtry in 1:10)
 
 ```
 
+```{r}
+round(test_err, 2)
+```
+```{r}
+round(oob_err, 2)
+```
+An mtry of four returns the lowest out of bag error for random forest. 
+
+
+```{r}
+rf.opt <- randomForest(price ~ ., data = new_train_ether, n_tree = 400, mtry = 4)
+
+y_hat_rf_opt <- predict(rf.opt, newdata = new_test_ether)
+
+ggplot() + geom_point(aes(x = new_test_ether$price, y = y_hat_rf_opt), color = "purple", alpha=0.5) + geom_abline(color = "yellow") + 
+  labs(x="Ether Price", y="Random Forest estimation of Ether Price")
+
+```
+
+
+```{r}
+mse_random_forest <- round(mean(new_test_ether$price - y_hat_rf_opt)^2, 2)
+```
+
+
+
+```{r}
+varImpPlot(rf.opt)
+```
+
+
+```{r}
+matplot(1:mtry , cbind(oob_err,test_err), pch=20 , col=c("red","blue"),type="b",ylab="Mean Squared Error",xlab="Number of Predictors Considered at each Split")
+legend("topright",legend=c("Out of Bag Error","Test Error"),pch=19, col=c("red","blue"))
+```
 
 
 ```{r}
