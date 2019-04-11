@@ -609,9 +609,9 @@ lasso_test_pred = predict.glmnet(lasso_model, newx = covariates_test, s=best_lam
 
 ridge_test_pred = predict.glmnet(ridge_model, newx = covariates_test, s=best_lambda_ridge)
 
-mean((response_test - lasso_test_pred) ^ 2)
+lasso_mse <- mean((response_test - lasso_test_pred) ^ 2)
 
-mean((response_test - ridge_test_pred) ^ 2)
+ridge_mse <- mean((response_test - ridge_test_pred) ^ 2)
 ```
 
 The **Lasso ** model returned an $MSE$ of 88166.71 while the **Ridge** model returned a more modest $MSE$ of 6682.426 on the test sets respectively. The Ridge regression model returns the lowest $MSE $of the two methods though the performance is not great.
@@ -691,6 +691,9 @@ The performance of regression trees under multiple seeds proves to be a promisin
 
 #### Report 4
 
+
+## 1)
+
 ```{r #1, #2}
 set.seed(385)
 
@@ -700,8 +703,8 @@ new_train_ether <- ether_df[,  -9] %>%
 new_test_ether <- ether_df[,  -9] %>%
   setdiff(new_train_ether)
 
-bagged.ether <- randomForest(price~., data = new_train_ether,
-                             ntree=400, mtry=10/3, importance=TRUE)
+bagged.ether <- randomForest(price ~ ., data = new_train_ether,
+                             ntree=400, mtry=10, importance=TRUE)
 bagged.ether
 
 
@@ -713,7 +716,7 @@ plot(bagged.ether)
 ```
 
 
-The Errors start to level off as you begun approaching 50 to 75 tree range. Increases the number of trees does not impact the error rate that much as the number of trees gets large. 
+The Errors start to level off as trees start approaching the 50 to 75 tree range. Increasing the number of trees does not impact the error rate that much as the number of trees gets large. 
 
 ```{r}
 yhat_bagged <- predict(bagged.ether, newdata = new_test_ether)
@@ -725,10 +728,16 @@ ggplot() + geom_point(aes(x = price, y = yhat_bagged), data = new_test_ether, co
 
 The Bagging estimation of Ether Price presents some of the best predictions on the test set of all methods. However the fit is not as tight as Ether Price increases. 
 
-```{r}
-round(mean((new_test_ether$price - yhat_bagged)^2), 2)
-```
 
+
+
+```{r}
+bagging_mse <- round(mean((new_test_ether$price - yhat_bagged)^2), 2)
+bagging_mse
+lasso_mse
+ridge_mse
+```
+The bagging model produces a solid $MSE = 973.39$; compared the large $MSE =888166.71$
 
 ```{r, 2e)}
 importance(bagged.ether)
@@ -743,21 +752,56 @@ varImpPlot(bagged.ether)
 ```{r}
 set.seed(385)
 
-ether_forest <- randomForest(price~., data = new_train_ether,
+ether_forest <- randomForest(price ~ ., data = new_train_ether,
                              mtry = 10/3,
                              importance = TRUE,
                              do.trace = 100)
 ```
 
+
+
+```{r}
+y_hat_rf <- predict(ether_forest, newdata = new_test_ether)
+
+```
+
+
+
+```{r}
+# Set mtry using hyperparamter tuning
+
+oob_err <- double(10)
+test_err <- double(10)
+
+#mtry is no of Variables randomly chosen at each split
+for(mtry in 1:10) 
+{
+  rf_ether <- randomForest(price ~ . , data = new_train_ether, mtry=mtry, ntree=400) 
+  oob_err[mtry] <- rf_ether$mse[400] #Error of all Trees fitted on training
+  
+  pred <- predict(rf_ether, new_test_ether) #Predictions on Test Set for each Tree
+  test_err[mtry] <- with(new_test_ether, mean( (price - pred)^2)) # "Test" Mean Squared Error
+  
+  print(mtry)
+  
+}
+
+```
+
+
+
 ```{r}
 set.seed(385)
-boosting_ether <- gbm(price~. -date_utc, 
+boosting_ether <- gbm(price ~ . -date_utc, 
                       data = new_train_ether,
                       distribution = "gaussian",
                       n.trees = 5000,
                       interaction.depth = 4) 
 summary(boosting_ether)
 ```
+
+
+
 
 ```{r}
 yhat_boost <- predict(boosting_ether, newdata = new_test_ether, n.trees = 5000)
@@ -799,11 +843,42 @@ ether.xgb = xgboost(data=d_train,
 
 ```
 
+## 5 a) plot of xgboost estimation over actual ether price
+
 ```{r}
 yhat_xgboost <- predict(ether.xgb, newdata = X_test)
 
 ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_xgboost), data = new_test_ether, color = "purple", alpha = 0.25) + 
   geom_abline(color = "yellow") + 
-  labs(x="Actual ether price", y="Xgboost estimation of ether price")
+  labs(x="Actual ether price", y="Xgboost estimation of ether price") 
+  
 ```
 
+
+
+## 5 b) comparison of mse between xgboost model and lasso\ridge 
+
+```{r}
+ round(mean(new_test_ether$price - yhat_xgboost)^2, 2)
+```
+
+
+
+
+
+
+## 5 c) plot the importance matrix
+
+```{r}
+ importance_xgb <- xgb.importance(colnames(X_training), model = ether.xgb)
+
+ importance_xgb
+ 
+ xgb.plot.importance(importance_matrix = importance_xgb, rel_to_first = TRUE, xlab="Relative Importance")
+```
+
+
+
+
+
+#6
