@@ -42,6 +42,7 @@ library(broom)
 library(caret)
 library(tidyr)
 library(randomForest)
+library(gbm)
 
 #substitute in the path on your machine to files 
 ethereum_transaction_history <- read_csv("C:\\Users\\andre\\Documents\\ECON_490_ML\\ML_report 1\\ethereum-historical-data\\EthereumTransactionHistory.csv")
@@ -735,5 +736,74 @@ importance(bagged.ether)
 
 ```{r}
 varImpPlot(bagged.ether)
+```
+
+
+
+```{r}
+set.seed(385)
+
+ether_forest <- randomForest(price~., data = new_train_ether,
+                             mtry = 10/3,
+                             importance = TRUE,
+                             do.trace = 100)
+```
+
+```{r}
+set.seed(385)
+boosting_ether <- gbm(price~. -date_utc, 
+                      data = new_train_ether,
+                      distribution = "gaussian",
+                      n.trees = 5000,
+                      interaction.depth = 4) 
+summary(boosting_ether)
+```
+
+```{r}
+yhat_boost <- predict(boosting_ether, newdata = new_test_ether, n.trees = 5000)
+
+ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_boost), color = "purple", alpha=0.5) + geom_abline(color = "yellow") + 
+  labs(x="Ether Price", y="Boosting estimation of Ether Priced")
+```
+
+
+
+
+
+```{r}
+round(mean(new_test_ether$price - yhat_boost)^2, 2)
+
+```
+
+
+
+```{r}
+library(xgboost)
+f <- price ~ transaction_history + block_size + hash_rate + day + month + unix_time_stamp + log_10_trans_history + log_10_block_size + log_10_hash_rate
+
+X_training <- model.matrix(f, data = new_train_ether)
+Y_training <- as.matrix(new_train_ether$price)
+d_train <- xgb.DMatrix(data = X_training, label = Y_training)
+X_test <- model.matrix(f, data = new_test_ether)
+
+set.seed(385)
+ether.xgb = xgboost(data=d_train,
+                     max_depth=5,
+                     eta = 0.1,
+                     nrounds=40, 
+                     lambda=0,
+                     print_every_n = 10,
+                     objective="reg:linear")
+
+
+
+```
+
+```{r}
+yhat_xgboost <- predict(ether.xgb, newdata = X_test)
+
+ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_xgboost), data = new_test_ether, color = "purple", alpha = 0.25) + 
+  geom_abline(color = "yellow") + 
+  labs(x="Actual ether price", y="Xgboost estimation of ether price")
 ```
 
