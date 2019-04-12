@@ -22,7 +22,7 @@ For the semester long project I will be attempting to predict the known response
 
 $$ether price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
 
-Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. 
+Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. Block size refers to the size of the Ethereum Block chain. Transactions are the number of transactions approved by the ledger. Hash rate is the rate at which it takes a miner to complete a Cryptographic computation on the block chain. 
 
 
 
@@ -711,25 +711,34 @@ bagged.ether
 
 ```
 
+
+#2 a)
+
+
 ```{r}
 plot(bagged.ether)
 ```
 
 
-The Errors start to level off as trees start approaching the 50 to 75 tree range. Increasing the number of trees does not impact the error rate that much as the number of trees gets large. 
+The Errors start to level off as trees start approaching the 50 to 75 tree range. Increasing the number of trees does not impact the error rate that much, as the number of trees gets large. 
+
+
+
+
+#2 c)
 
 ```{r}
 yhat_bagged <- predict(bagged.ether, newdata = new_test_ether)
 
-ggplot() + geom_point(aes(x = price, y = yhat_bagged), data = new_test_ether, color = "purple", alpha = 0.50) + geom_abline(color = "yellow") + 
-  labs(x="Ether Price", y="Bagging estimation of Ether Price")
+ggplot() + geom_point(aes(x = yhat_bagged, y = price), data = new_test_ether, color = "purple", alpha = 0.50) + geom_abline(color = "yellow") + 
+  labs(x="Bagging Estimation of Ether", y="Ether test Price", title="Bagging Estimation of Ether vs Actual Test Ether Price") 
   
 ```
 
-The Bagging estimation of Ether Price presents some of the best predictions on the test set of all methods. However the fit is not as tight as Ether Price increases. 
+The Bagging estimation of Ether Price presents some of the best predictions on the test set of all methods. However the fit is not as tight as Ether Price increases. In addition it is an improvement over the bootstrapped version of the trees from my previous report. 
 
 
-
+# 2 c)
 
 ```{r}
 bagging_mse <- round(mean((new_test_ether$price - yhat_bagged)^2), 2)
@@ -737,8 +746,12 @@ bagging_mse
 lasso_mse
 ridge_mse
 ```
-The bagging model produces a solid $MSE = 973.39$; compared the large $MSE =888166.71$
+The bagging model produces a solid $MSE = 973.39$; compared the large $MSE =  5159.982$ for lasso and the large mse of $MSE = 6682.426$  for ridge regression. 
 
+
+
+
+# 2 d)
 ```{r, 2e)}
 importance(bagged.ether)
 ```
@@ -746,7 +759,7 @@ importance(bagged.ether)
 ```{r}
 varImpPlot(bagged.ether)
 ```
-
+In terms of important variables for the bagging model date, unix time stamp, log_10_transaction history, and transaction history have the largest increased percentage in the mean squared errors. It is a more robust measure of error versus the IncNodePurity. 
 
 
 ```{r}
@@ -819,11 +832,15 @@ varImpPlot(rf.opt)
 ```
 
 
+# 2 c)
+
 ```{r}
 matplot(1:mtry , cbind(oob_err,test_err), pch=20 , col=c("red","blue"),type="b",ylab="Mean Squared Error",xlab="Number of Predictors Considered at each Split")
 legend("topright",legend=c("Out of Bag Error","Test Error"),pch=19, col=c("red","blue"))
 ```
+The ideal number of predictors Considered at each split is different depending on whether our goal is to minimize the mean squared error of the test error or the out of bag error the best number of predictors to consider at each split happens to be 4 predictors. While 7 predictors allow for a minimized mean squared error. However; for cross validation we will use the ideal number of predictors based on the out of bag error. 
 
+# 2 d)
 
 ```{r}
 set.seed(385)
@@ -835,14 +852,15 @@ boosting_ether <- gbm(price ~ . -date_utc,
 summary(boosting_ether)
 ```
 
+Transaction history, Unix time stamp, and hash rate are all displayed as important variables according to the importance matrix. Transaction history carries the largest relative importance of all the variables at a value of 76.36 pecent. While unix time stamp has an importance of 11.67 percent which is not very significant. The only other variable containing a significant amount of importance is network hash rate. 
 
 
 
 ```{r}
 yhat_boost <- predict(boosting_ether, newdata = new_test_ether, n.trees = 5000)
 
-ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_boost), color = "purple", alpha=0.5) + geom_abline(color = "yellow") + 
-  labs(x="Ether Price", y="Boosting estimation of Ether Priced")
+ggplot() + geom_point(aes(x = yhat_boost, y = new_test_ether$price), color = "purple", alpha=0.5) + geom_abline(color = "yellow") + 
+  labs(x="Boosting Estimation of Ether Price", y="Ether Price test set", title = "Boosting Estimation of Ether Price vs Actual Ether Price")
 ```
 
 
@@ -894,7 +912,12 @@ ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_xgboost), data = ne
 ## 5 b) comparison of mse between xgboost model and lasso\ridge 
 
 ```{r}
- round(mean(new_test_ether$price - yhat_xgboost)^2, 2)
+ boosted_mse <- round(mean(new_test_ether$price - yhat_xgboost)^2, 2)
+ lasso_mse
+ ridge_mse
+ bagging_mse
+ mse_random_forest
+ boosted_mse
 ```
 
 
@@ -912,7 +935,7 @@ ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_xgboost), data = ne
  xgb.plot.importance(importance_matrix = importance_xgb, rel_to_first = TRUE, xlab="Relative Importance")
 ```
 
-
+Transaction history displays an overwhelming level of relative importance for the xgboost model as shown above. With time or unix time stamp being the only other important variable.
 
 
 
@@ -945,6 +968,7 @@ gbm.tuned
 
 ```
 
+# 6 b)
 
 
 ```{r}
@@ -956,21 +980,29 @@ ggplot()+ geom_point(aes(x = y_hat_tuned, y = new_test_ether$price), color = "pu
 ```
 
 
+#6 c)
+
 ```{r}
 mse_tuned <- round(mean(new_test_ether$price - y_hat_tuned)^2, 2)
 mse_tuned
+mse_random_forest
+bagging_mse
+lasso_mse
+ridge_mse
+boosted_mse
 ```
-
+The parameter tuned boosting model returns the lowest mean squared errors of  any of the models. Though I should be cautious of overfitting as I grew a large number of trees. 
 
 
 ```{r}
 with_2_standard_errs <- oneSE(gbm.tuned$results, metric = "RMSE", num = 5, maximize = FALSE)
 gbm.tuned$results[with_2_standard_errs, 1:6]
 ```
-
+These would be the ideal hyperparameter values to fit a gradient boosted model to avoid overfitting based on the one standard error rule of thumb. 
 
 
 ```{r}
 summary(gbm.tuned)
 ```
 
+Similiar to previous importance plots transaction history has the largest relative influence on ether price. Which makes some intuitive sense as investors might believe in the technology more as it usage increases. None of the other variables show much of a relative influence. 
