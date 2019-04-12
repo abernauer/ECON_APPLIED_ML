@@ -802,7 +802,7 @@ rf.opt <- randomForest(price ~ ., data = new_train_ether, n_tree = 400, mtry = 4
 
 y_hat_rf_opt <- predict(rf.opt, newdata = new_test_ether)
 
-ggplot() + geom_point(aes(x = new_test_ether$price, y = y_hat_rf_opt), color = "purple", alpha=0.5) + geom_abline(color = "yellow") + 
+ggplot() + geom_point(aes(x = y_hat_rf_opt, y = new_test_ether$price), color = "purple", alpha=0.5) + geom_abline(color = "yellow") + 
   labs(x="Ether Price", y="Random Forest estimation of Ether Price")
 
 ```
@@ -917,3 +917,50 @@ ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_xgboost), data = ne
 
 
 #6
+
+```{r}
+gbm.grid <- expand.grid(interaction.depth = c(1, 4, 5, 9),
+                        n.trees = (1:30)*50,
+                        n.minobsinnode = 20,
+                        shrinkage = 0.1)
+nrow(gbm.grid)
+
+fit.control <- trainControl(method = "repeatedcv",
+                            number = 5,
+                            repeats = 5)
+
+set.seed(385)
+
+gbm.tuned <- train(price ~ . -date_utc, 
+                   data = new_train_ether,
+                   method = "gbm",
+                   trControl = fit.control,
+                   verbose = FALSE,
+                   tuneGrid = gbm.grid)
+
+gbm.tuned
+
+with_2_standard_errs <- oneSE(gbm.tuned$results, metric = "RMSE", num = 5, maximize = FALSE)
+
+
+```
+
+```{r}
+gbm.tuned$results[with_2_standard_errs, 1:6]
+```
+
+```{r}
+y_hat_tuned <- predict.train(gbm.tuned, newdata = new_test_ether, type ='raw')
+
+ggplot()+ geom_point(aes(x = y_hat_tuned, y = new_test_ether$price), color = "purple", alpha = 0.50) + 
+  geom_abline(color = "yellow") + 
+  labs(x="Parameter tuned boosting estimate of Ether Price", y="Actual test-set Price", title = "Parameter tuned boosting estimation of Ether Price vs Actual test-set Price")
+```
+
+
+```{r}
+mse_tuned <- round(mean(new_test_ether$price - y_hat_tuned)^2, 2)
+mse_random_forest
+
+```
+
