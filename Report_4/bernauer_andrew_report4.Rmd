@@ -523,16 +523,16 @@ test_df <- test_df[, -9]
 covariates_train <- model.matrix(price~. , data = train_df)[, c(-1, -9)]
 
 covariates_test <- model.matrix(price~. , data=test_df)[, c(-1, -9)]
-response_train <- as.numeric(unlist(train_df[1]))
-response_test <- as.numeric((unlist(test_df[1])))
+response_train <- as.numeric(unlist(train_df[[1]]))
+response_test <- as.numeric((unlist(test_df[[1]])))
 
-grid <- 10^seq(10, -2, length.out = 100)
+grid <- 10^seq(5, -5, length.out = 100)
 
-ridge_model <- glmnet(covariates_train, response_train, alpha = 0, lambda = grid, family ="gaussian")
+ridge_model <- glmnet(covariates_train, response_train, alpha = 0, family ="gaussian")
 
 plot.glmnet(ridge_model, xvar = "lambda")
 
-lasso_model <- glmnet(covariates_test, response_train, alpha = 1, lambda = grid, family = "gaussian")
+lasso_model <- glmnet(covariates_train, response_train, alpha = 1,  family = "gaussian")
 
 
 plot.glmnet(lasso_model, xvar = "lambda", label = "true")
@@ -920,7 +920,7 @@ ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_xgboost), data = ne
 
 ```{r}
 gbm.grid <- expand.grid(interaction.depth = c(1, 4, 5, 9),
-                        n.trees = (1:30)*50,
+                        n.trees = (1:100)*50,
                         n.minobsinnode = 20,
                         shrinkage = 0.1)
 nrow(gbm.grid)
@@ -940,14 +940,12 @@ gbm.tuned <- train(price ~ . -date_utc,
 
 gbm.tuned
 
-with_2_standard_errs <- oneSE(gbm.tuned$results, metric = "RMSE", num = 5, maximize = FALSE)
+
 
 
 ```
 
-```{r}
-gbm.tuned$results[with_2_standard_errs, 1:6]
-```
+
 
 ```{r}
 y_hat_tuned <- predict.train(gbm.tuned, newdata = new_test_ether, type ='raw')
@@ -960,7 +958,19 @@ ggplot()+ geom_point(aes(x = y_hat_tuned, y = new_test_ether$price), color = "pu
 
 ```{r}
 mse_tuned <- round(mean(new_test_ether$price - y_hat_tuned)^2, 2)
-mse_random_forest
+mse_tuned
+```
 
+
+
+```{r}
+with_2_standard_errs <- oneSE(gbm.tuned$results, metric = "RMSE", num = 5, maximize = FALSE)
+gbm.tuned$results[with_2_standard_errs, 1:6]
+```
+
+
+
+```{r}
+summary(gbm.tuned)
 ```
 
