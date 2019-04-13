@@ -683,10 +683,6 @@ The $MSE$ of the bootstrapped trees is a performance upgrade over the results fr
 
 
 
-### Conclusion 
-
-The performance of regression trees under multiple seeds proves to be a promising development as we start covering boosting, bagging, and random forests in further reports. Ridge was a decent improvement over a single tree aproach and performed roughly similar too . Additionally, the multimodal nature of some of the distribution could point to using a different performance metric than MSE possibly MAD mean absolute deviations, or MAE mean absolute errors. 
-
 
 
 #### Report 4
@@ -755,6 +751,9 @@ The bagging model produces a solid $MSE = 973.39$; compared the large $MSE =  51
 ```{r, 2e)}
 importance(bagged.ether)
 ```
+Transaction history, variables emphasizing time, 
+
+
 
 ```{r}
 varImpPlot(bagged.ether)
@@ -762,6 +761,7 @@ varImpPlot(bagged.ether)
 In terms of important variables for the bagging model date, unix time stamp, log_10_transaction history, and transaction history have the largest increased percentage in the mean squared errors. It is a more robust measure of error versus the IncNodePurity. 
 
 
+# 3)
 ```{r}
 set.seed(385)
 
@@ -809,6 +809,7 @@ round(oob_err, 2)
 ```
 An mtry of four returns the lowest out of bag error for random forest. 
 
+#3 c)
 
 ```{r}
 rf.opt <- randomForest(price ~ ., data = new_train_ether, n_tree = 400, mtry = 4)
@@ -816,23 +817,31 @@ rf.opt <- randomForest(price ~ ., data = new_train_ether, n_tree = 400, mtry = 4
 y_hat_rf_opt <- predict(rf.opt, newdata = new_test_ether)
 
 ggplot() + geom_point(aes(x = y_hat_rf_opt, y = new_test_ether$price), color = "purple", alpha=0.5) + geom_abline(color = "yellow") + 
-  labs(x="Ether Price", y="Random Forest estimation of Ether Price")
+  labs(x="Random Forest estimation of Ether Price", y="Ether Price", title = "Random Forest estimation of Ether Price vs Actual Ether Price")
 
 ```
+The residuals increase as Ether Price increases similar to other tree based methods, but has one of the best fits of all the tree based models.
 
+
+# 3 d)
 
 ```{r}
 mse_random_forest <- round(mean(new_test_ether$price - y_hat_rf_opt)^2, 2)
+lasso_mse
+ridge_mse
+bagging_mse
+mse_random_forest
 ```
+Random forest fits Ether Price really well better than any other models used so far. 
 
-
+# 3 e)
 
 ```{r}
 varImpPlot(rf.opt)
 ```
+Like the other tree based models random forest emphasizes the importance of transaction history as well as time.
 
-
-# 2 c)
+# 3 f)
 
 ```{r}
 matplot(1:mtry , cbind(oob_err,test_err), pch=20 , col=c("red","blue"),type="b",ylab="Mean Squared Error",xlab="Number of Predictors Considered at each Split")
@@ -840,7 +849,7 @@ legend("topright",legend=c("Out of Bag Error","Test Error"),pch=19, col=c("red",
 ```
 The ideal number of predictors Considered at each split is different depending on whether our goal is to minimize the mean squared error of the test error or the out of bag error the best number of predictors to consider at each split happens to be 4 predictors. While 7 predictors allow for a minimized mean squared error. However; for cross validation we will use the ideal number of predictors based on the out of bag error. 
 
-# 2 d)
+# 4 a)
 
 ```{r}
 set.seed(385)
@@ -854,7 +863,7 @@ summary(boosting_ether)
 
 Transaction history, Unix time stamp, and hash rate are all displayed as important variables according to the importance matrix. Transaction history carries the largest relative importance of all the variables at a value of 76.36 pecent. While unix time stamp has an importance of 11.67 percent which is not very significant. The only other variable containing a significant amount of importance is network hash rate. 
 
-
+#4 b)
 
 ```{r}
 yhat_boost <- predict(boosting_ether, newdata = new_test_ether, n.trees = 5000)
@@ -863,15 +872,23 @@ ggplot() + geom_point(aes(x = yhat_boost, y = new_test_ether$price), color = "pu
   labs(x="Boosting Estimation of Ether Price", y="Ether Price test set", title = "Boosting Estimation of Ether Price vs Actual Ether Price")
 ```
 
+Bagging is a relatively viable modeling technique, for predicting ether price given the fit above.
 
 
+
+
+#4 c)
 
 
 ```{r}
-round(mean(new_test_ether$price - yhat_boost)^2, 2)
-
+boosting_mse <- round(mean(new_test_ether$price - yhat_boost)^2, 2)
+boosting_mse
+lasso_mse
+ridge_mse
+bagging_mse
 ```
 
+Bagging returns a very low Mean Square error of 6.72 one issue to be aware of is the large number of trees constructed to make the model. This could result in overfitting.  
 
 
 ```{r}
@@ -901,25 +918,27 @@ ether.xgb = xgboost(data=d_train,
 ```{r}
 yhat_xgboost <- predict(ether.xgb, newdata = X_test)
 
-ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_xgboost), data = new_test_ether, color = "purple", alpha = 0.25) + 
+ggplot() + geom_point(aes(x = yhat_xgboost, y = price), data = new_test_ether, color = "purple", alpha = 0.25) + 
   geom_abline(color = "yellow") + 
-  labs(x="Actual ether price", y="Xgboost estimation of ether price") 
+  labs(x="Xgboost estimation of ether price", y="Actual ether price", title = "Xgboost estimation of Ether price vs Actual Test ether price") 
   
 ```
-
+The xgboosted model performs relatively strong, but like other tree based models the fit is not as good as Ether Price increases. 
 
 
 ## 5 b) comparison of mse between xgboost model and lasso\ridge 
 
 ```{r}
- boosted_mse <- round(mean(new_test_ether$price - yhat_xgboost)^2, 2)
+ xg_boosted_mse <- round(mean(new_test_ether$price - yhat_xgboost)^2, 2)
  lasso_mse
  ridge_mse
  bagging_mse
  mse_random_forest
- boosted_mse
+ boosting_mse
+ xg_boosted_mse
 ```
 
+An MSE of 68.62 of returned by the xgboosted model is respectable in comparison to boosting and the other tree-based methods, but does not perform aswell as Random Forest or gradient boosting. 
 
 
 
@@ -935,7 +954,7 @@ ggplot() + geom_point(aes(x = new_test_ether$price, y = yhat_xgboost), data = ne
  xgb.plot.importance(importance_matrix = importance_xgb, rel_to_first = TRUE, xlab="Relative Importance")
 ```
 
-Transaction history displays an overwhelming level of relative importance for the xgboost model as shown above. With time or unix time stamp being the only other important variable.
+Transaction history displays an overwhelming level of relative importance for the xgboosted model as shown above. With time or unix time stamp being the only other important variable.
 
 
 
@@ -979,6 +998,7 @@ ggplot()+ geom_point(aes(x = y_hat_tuned, y = new_test_ether$price), color = "pu
   labs(x="Parameter tuned boosting estimate of Ether Price", y="Actual test-set Price", title = "Parameter tuned boosting estimation of Ether Price vs Actual test-set Price")
 ```
 
+The Parameter boosted model gives a relatively tight fit around the ideal fit line. With larger residuals resulting as the price increases. 
 
 #6 c)
 
@@ -989,7 +1009,8 @@ mse_random_forest
 bagging_mse
 lasso_mse
 ridge_mse
-boosted_mse
+boosting_mse
+xg_boosted_mse
 ```
 The parameter tuned boosting model returns the lowest mean squared errors of  any of the models. Though I should be cautious of overfitting as I grew a large number of trees. 
 
@@ -1006,3 +1027,7 @@ summary(gbm.tuned)
 ```
 
 Similiar to previous importance plots transaction history has the largest relative influence on ether price. Which makes some intuitive sense as investors might believe in the technology more as it usage increases. None of the other variables show much of a relative influence. 
+
+## Conclusion 
+
+Random forest appears to be the best model, for modeling Ether price it avoids overfitting. In addition, the model constructed used the out of bag error to determine the number of splits to consider, for predictors. So we could expect the the results to generalize well to new test data. Which is not the case for the parameter tuned gbm model having lower mean squared error. 
