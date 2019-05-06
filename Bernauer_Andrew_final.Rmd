@@ -7,25 +7,30 @@ output: html_document
 
 
 
-#Difficult Learning Problems in Economics: Predicting Ether Price
+#Difficult Learning Problems in Economics: Predicting Ether Price  
 
 
-#Report 1
 
 
-##Introduction 
+
+
+
+
+
+#a) Introduction 
+
 For the semester long project I will be attempting to predict the known response variable ethereum price in terms of the predictors: block size, network hash rate growth rate, transactions, day of the week, and month. The project is regression based and not a classification task. Therefore the project will fall under the umbrella of supervised machine learning.    
 
 
 
-$$ether price = \beta_{o} + \beta_{1} \times blocksize + \beta_{2} \times networkhashgrowthrate + \beta_{3}  \times transactions + \beta_{4} \times day + \beta_{5} \times month + \epsilon $$
+$$\text{ether price} \approx \beta_{o} + \beta_{1} \times \text{blocksize} + \beta_{2} \times \text{networkhashgrowthrate} + \beta_{3}  \times \text{transactions} + \beta_{4} \times \text{day} + \beta_{5} \times \text{month} $$
 
 Ethereum is a decentralized, open source, block chain technology, featuring smart contracts. The crypto currency that fuels the Ethereum block chain is Ether. Block size refers to the size of the Ethereum Block chain. Transactions are the number of transactions approved by the ledger. Hash rate is the rate at which it takes a miner to complete a Cryptographic computation on the block chain. 
 
 
 
-###Data  
-```{r data carpentry, cache=TRUE}
+ 
+```{r data carpentry, cache=FALSE}
 
 
 library(scales)
@@ -103,7 +108,7 @@ xs <-function(x){(x-mean(x))/(2*sd(x))}
 
 
 
-####Plots
+
 ```{r price_vs_time, warning=FALSE, cache=TRUE}
  
 price_history <- ggplot(ether_df) +
@@ -194,16 +199,22 @@ There appears to be some clustering of Ether price as transactions increases on 
 
 
 ```{r}
+library(ggplot2)
 p <- ggplot(ether_df) +
- aes(log_10_hash_rate) + geom_histogram(bins = 34, fill = "purple") +
+  aes(x=log_10_hash_rate) +
+  geom_histogram(bins = 34, fill = "purple") +
   ggtitle(label = "Histogram of the distribution of hash rate log 10 scale") +
-  xlab("Distribution of log 10 transactions")
+  xlab("Distribution of log 10 transactions") + 
+  ylab("Count")
   
   
 p
 ```
 
 Many of the $X_{1}, X_{2}, \dots, X_{n}$ or predictor variables in the dataset follow skewed distribution and feature multiple peaks. This could be pointing to the presence of sub-populations within the underlying data. 
+
+
+
 
 
 ```{r hist block_size,}
@@ -218,7 +229,7 @@ ggplot(ether_df) +
 Likewise, blocksize has this similar property this sort of distribution doesn't suit itself well, for standard machine learning algorithms given the multiple peaks. Most of the variables follow gamma distributions in the cartesian coordinate scale. I declined to illustrate those graphs.
 
 
-#####Summary Code
+#b.) Summary Statistics 
 
 ```{r tidy_summary_code}
 
@@ -240,13 +251,13 @@ ether_df %>% summarise(mean_hash_rate = mean(hash_rate), median_hash_rate = medi
 ```
 
 
-#Report 2
 
 
 
 
 
-##Regressions
+
+#c) Linear Regressions
 
 
 ```{r regressions,}
@@ -273,9 +284,9 @@ log_ols <- lm(log(price) ~ log(transaction_history), data = ether_df, subset = p
 
 
 
-###Regression Diagnostics 
 
-The following code block returns the adjusted $\hat{R}^{2}_{\text{adjusted}}$ statistics for the five regressions I ran.
+
+The following code block returns the adjusted  $\hat{R}^{2}_{\text{adjusted}}$ statistics for the five regressions I ran.
 
 
 ```{r, cache=TRUE}
@@ -319,8 +330,15 @@ All of the coefficients return p values significant at the .10 cut off level whi
 
 
 
-The log-log model with all the continuous predictors included had the highest adjusted 
-$\hat{R}^{2}_{\text{adjusted}} = 0.9363884$ of all the regressions ran. A model excluding the log block size term comes in a close second. Another, option is the last model with just log transaction as a predictor. 
+
+
+
+
+
+
+
+The log-log model with all the continuous predictors included had the highest adjusted $\,$ 
+$\hat{R}^{2}_{\text{adjusted}} = 0.9363884$ $\,$ of all the regressions ran. A model excluding the log block size term comes in a close second. Another, option is the last model with just log transaction as a predictor. 
 
 Predictors performing the best presented the following equation $$ \hat{y} = -10.65 + 0.072 \log(\text{Blocksize}) + 1.0007 \log(\text{TransactionHistory}) + 0.222\log(\text{Hashrate}) $$.
 
@@ -427,7 +445,12 @@ some_plot_2 <- ggplot(data = augmented_reg_obj, aes(.resid)) +
 
 some_plot_2
 ```
-The majority of the residuals are distributed between -1 and 1 peaking at zero. This distribution is similar to the laplace distribution. 
+  
+
+
+
+
+The majority of the residuals are distributed between -1 and 1 peaking at zero. This distribution is similar to the laplace distribution.  
 
 
 
@@ -444,6 +467,8 @@ some_plot_3 +
 
 ```
 
+
+
 The Residuals plotted against Ether Price suggest there is possible non-normality in the distribution of the errors.
 
 
@@ -451,7 +476,6 @@ The Residuals plotted against Ether Price suggest there is possible non-normalit
 
 
 
-##KNN Regression
 
 
 
@@ -459,49 +483,13 @@ The Residuals plotted against Ether Price suggest there is possible non-normalit
 
 
 
-```{r knn regression, eval=FALSE, cache=TRUE}
-library(caret)
-
-set.seed(20)
-
-train_index <- createDataPartition(ether_df$price, p = .8, list = FALSE, times = 1)
-
-head(train_index)
-
-ether_df_train <- ether_df[train_index, ]
-
-ether_df_test <- ether_df[-train_index, ]
-
-tr_control <- trainControl(method = "repeatedcv",
-             number = 10,
-             repeats = 3
-             )
-knn_model <-  train(price ~., data = ether_df,
-                    method = "knn",
-                    preProcess = c("center", "scale"), 
-                    trControl = tr_control, 
-                    metric = "RMSE",
-                    tuneLength = 10
-                    )
-
-knn_model
-
-knn_model$results
-
-y_hat <- predict(knn_model, newdata = ether_df)
-
-predicted <- predict(knn_model, ether_df)
-
-plot(ether_df$price, predicted)
-sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df)) 
-
-```
 
 
-#Report 3
 
 
-## Ridge and Lasso Regressions
+
+
+## d. and e.) Ridge and Lasso Regressions
 
 ```{r 1) 2) d) }
 library(glmnet)
@@ -511,16 +499,16 @@ library(caret)
 set.seed(385)
 
 
-train_df <- ether_df %>% sample_frac(0.5)
+train_df <- ether_df %>% sample_frac(0.75)
 test_df <- ether_df %>% setdiff(train_df)
 
-train_df <- train_df[, -9]
+train_df <- train_df[, -9, drop=FALSE]
 
-test_df <- test_df[, -9]
+test_df <- test_df[, -9, drop=FALSE]
 
-covariates_train <- model.matrix(price~. , data = train_df)[, c(-1, -9)]
+covariates_train <- model.matrix(price~. , data = train_df)[, c(-1, -9), drop=FALSE]
 
-covariates_test <- model.matrix(price~. , data=test_df)[, c(-1, -9)]
+covariates_test <- model.matrix(price~. , data=test_df)[, c(-1, -9), drop=FALSE]
 response_train <- as.numeric(unlist(train_df[[1]]))
 response_test <- as.numeric((unlist(test_df[[1]])))
 
@@ -618,7 +606,7 @@ The **Lasso ** model returned an $MSE$ of 88166.71 while the **Ridge** model ret
 
 
 
-## Regression trees 
+##f.) Regression trees 
 
 ```{r 3) a-d, }
 library(tree)
@@ -655,27 +643,8 @@ The pruned regression tree contains a total of five terminal nodes each displayi
 
 
 
-## Bootstrapped trees
-
-```{r 4)a-c, cache=TRUE}
-set.seed(385)
-
-statistic <- function(x, n=100, best=5){
-  tree_1 <- tree(price~., data = train_df)
-  pruned_tree_1 <- prune.tree(tree_1, k=10, best = best)
-  
- return(  predict(pruned_tree_1, newdata = test_df) )
-  
-  
-  
-}
-
- result <- boot::boot(data = train_df, statistic, R=100, sim = "ordinary")
- 
-mean((test_df$price - result$t0) ^ 2)
 
 
-```
 
 The $MSE$ of the bootstrapped trees is a performance upgrade over the results from the previous performance of the single regression tree trained on the training data. This is not completely surprising as we would expect the model to perform better on our training data and to underperform on the test data. Surprisingly though I was able to get an  $MSE$ that was significanctly better accross multiple seeds and fitting trees which is promising, for future reports.  Of course there is a trade-off in that we don't want our model to overfit the training data and not perform well on the test set. 
 
@@ -683,24 +652,24 @@ The $MSE$ of the bootstrapped trees is a performance upgrade over the results fr
 
 
 
-## Report 4
 
 
 
 
-## 1)
+
+
 
 ```{r #1, #2}
 set.seed(385)
 
-new_train_ether <- ether_df[,  -9] %>%
+new_train_ether <- ether_df[,  -9, drop=FALSE] %>%
   sample_frac(0.7) 
   
-new_test_ether <- ether_df[,  -9] %>%
+new_test_ether <- ether_df[,  -9, drop=FALSE] %>%
   setdiff(new_train_ether)
 
 bagged.ether <- randomForest(price ~ ., data = new_train_ether,
-                             ntree=400, mtry=10, importance=TRUE)
+                             ntree=400, mtry=4, importance=TRUE)
 bagged.ether
 
 
@@ -708,7 +677,7 @@ bagged.ether
 ```
 
 
-#2 a)
+# g.) Bagging
 
 
 ```{r}
@@ -721,7 +690,7 @@ The Errors start to level off as trees start approaching the 50 to 75 tree range
 
 
 
-#2 b)
+
 
 ```{r}
 yhat_bagged <- predict(bagged.ether, newdata = new_test_ether)
@@ -734,7 +703,7 @@ ggplot() + geom_point(aes(x = yhat_bagged, y = price), data = new_test_ether, co
 The Bagging estimation of Ether Price presents some of the best predictions on the test set of all methods. However the fit is not as tight as Ether Price increases. In addition it is an improvement over the bootstrapped version of the trees from my previous report. 
 
 
-# 2 c)
+
 
 ```{r}
 bagging_mse <- round(mean((new_test_ether$price - yhat_bagged)^2), 2)
@@ -742,12 +711,12 @@ bagging_mse
 lasso_mse
 ridge_mse
 ```
-The bagging model produces a solid $MSE = 973.39$; compared the large $MSE =  5159.982$ for lasso and the large mse of $MSE = 6682.426$  for ridge regression. 
+The bagging model is the best $MSE = 1023.55$; compared to the large $MSE =  5159.674$ for lasso and the large mse of $MSE = 6704.901$  for ridge regression. Meaning that the model has less variance in performance about the mean. 
 
 
 
 
-# 2 d)
+
 ```{r, 2e)}
 importance(bagged.ether)
 ```
@@ -762,16 +731,18 @@ varImpPlot(bagged.ether)
 In terms of important variables for the bagging model date, unix time stamp, log_10_transaction history, and transaction history have the largest increased percentage in the mean squared errors. It is a more robust measure of error versus the IncNodePurity. 
 
 
-# 3)
+# h.) Random Forest
 ```{r}
 set.seed(385)
 
 ether_forest <- randomForest(price ~ ., data = new_train_ether,
-                             mtry = 10/3,
+                             mtry = 10,
                              importance = TRUE,
                              do.trace = 100)
+plot(ether_forest)
 ```
 
+Error mostly flat lines as number of trees approaches 50.
 
 
 ```{r}
@@ -810,7 +781,7 @@ round(oob_err, 2)
 ```
 An mtry of four returns the lowest out of bag error for random forest. 
 
-#3 c)
+
 
 ```{r}
 rf.opt <- randomForest(price ~ ., data = new_train_ether, n_tree = 400, mtry = 4)
@@ -826,33 +797,38 @@ ggplot() + geom_point(aes(x = y_hat_rf_opt, y = new_test_ether$price), color = "
 The residuals increase as Ether Price increases similar to other tree based methods, but has one of the best fits of all the tree based models.
 
 
-# 3 d)
+
 
 ```{r}
-mse_random_forest <- round(mean(new_test_ether$price - y_hat_rf_opt)^2, 2)
+mse_random_forest <- round(mean((new_test_ether$price - y_hat_rf_opt)^2))
 lasso_mse
 ridge_mse
 bagging_mse
 mse_random_forest
 ```
-Random forest fits Ether Price really well better than any other models used so far. 
+Random forest fits Ether Price really well better than any other models used so far, except bagging. 
 
-# 3 e)
+
 
 ```{r}
 varImpPlot(rf.opt)
 ```
 Like the other tree based models random forest emphasizes the importance of transaction history as well as time.
 
-# 3 f)
+
 
 ```{r}
 matplot(1:mtry , cbind(oob_err,test_err), pch=20 , col=c("red","blue"),type="b",ylab="Mean Squared Error",xlab="Number of Predictors Considered at each Split")
 legend("topright",legend=c("Out of Bag Error","Test Error"),pch=19, col=c("red","blue"))
 ```
+   
+
+
+
+
 The ideal number of predictors Considered at each split is different depending on whether our goal is to minimize the mean squared error of the test error or the out of bag error the best number of predictors to consider at each split happens to be 4 predictors. While 7 predictors allow for a minimized mean squared error. However; for cross validation we will use the ideal number of predictors based on the out of bag error. 
 
-# 4 a)
+# i.) Boosting
 
 ```{r}
 set.seed(385)
@@ -866,7 +842,7 @@ summary(boosting_ether)
 
 Transaction history, Unix time stamp, and hash rate are all displayed as important variables according to the importance matrix. Transaction history carries the largest relative importance of all the variables at a value of 76.36 pecent. While unix time stamp has an importance of 11.67 percent which is not very significant. The only other variable containing a significant amount of importance is network hash rate. 
 
-#4 b)
+
 
 ```{r}
 yhat_boost <- predict(boosting_ether, newdata = new_test_ether, n.trees = 5000)
@@ -875,32 +851,36 @@ ggplot() + geom_point(aes(x = yhat_boost, y = new_test_ether$price), color = "pu
   labs(x="Boosting Estimation of Ether Price", y="Ether Price test set", title = "Boosting Estimation of Ether Price vs Actual Ether Price")
 ```
 
-Bagging is a relatively viable modeling technique, for predicting ether price given the fit above.
+Boosting is a relatively viable modeling technique, for predicting ether price given the fit above.
 
 
 
 
-#4 c)
+
 
 
 ```{r}
-boosting_mse <- round(mean(new_test_ether$price - yhat_boost)^2, 2)
+boosting_mse <- mean((new_test_ether$price - yhat_boost)^2)
 boosting_mse
 lasso_mse
 ridge_mse
 bagging_mse
 ```
 
-Bagging returns a very low Mean Square error of 6.72 one issue to be aware of is the large number of trees constructed to make the model. This could result in overfitting.  
+Boosting returns a very low Mean Square error of 1023.55.
 
+## j.) XGboost
 
 ```{r}
 library(xgboost)
 f <- price ~ transaction_history + block_size + hash_rate + day + month + unix_time_stamp + log_10_trans_history + log_10_block_size + log_10_hash_rate
 
 X_training <- model.matrix(f, data = new_train_ether)
+
 Y_training <- as.matrix(new_train_ether$price)
+
 d_train <- xgb.DMatrix(data = X_training, label = Y_training)
+
 X_test <- model.matrix(f, data = new_test_ether)
 
 set.seed(385)
@@ -916,7 +896,7 @@ ether.xgb = xgboost(data=d_train,
 
 ```
 
-## 5 a) plot of xgboost estimation over actual ether price
+
 
 ```{r}
 yhat_xgboost <- predict(ether.xgb, newdata = X_test)
@@ -929,10 +909,10 @@ ggplot() + geom_point(aes(x = yhat_xgboost, y = price), data = new_test_ether, c
 The xgboosted model performs relatively strong, but like other tree based models the fit is not as good as Ether Price increases. 
 
 
-## 5 b) comparison of mse between xgboost model and lasso\ridge 
+
 
 ```{r}
- xg_boosted_mse <- round(mean(new_test_ether$price - yhat_xgboost)^2, 2)
+ xg_boosted_mse <- mean((new_test_ether$price - yhat_xgboost)^2) 
  lasso_mse
  ridge_mse
  bagging_mse
@@ -941,13 +921,13 @@ The xgboosted model performs relatively strong, but like other tree based models
  xg_boosted_mse
 ```
 
-An MSE of 68.62 of returned by the xgboosted model is respectable in comparison to boosting and the other tree-based methods, but does not perform aswell as Random Forest or gradient boosting. 
+An MSE of 1415.984 is returned by the xgboosted model is respectable in comparison to boosting and the other tree-based methods, but does not perform aswell as Random Forest or gradient boosting. 
 
 
 
 
 
-## 5 c) plot the importance matrix
+
 
 ```{r}
  importance_xgb <- xgb.importance(colnames(X_training), model = ether.xgb)
@@ -960,13 +940,65 @@ An MSE of 68.62 of returned by the xgboosted model is respectable in comparison 
 Transaction history displays an overwhelming level of relative importance for the xgboosted model as shown above. With time or unix time stamp being the only other important variable.
 
 
+```{r}
+library(caret)
 
-#6
+f <- price ~ transaction_history + block_size + hash_rate + day + month + unix_time_stamp + log_10_trans_history + log_10_block_size + log_10_hash_rate
+
+X_training <- model.matrix(f, data = new_train_ether)
+
+Y_training <- as.matrix(new_train_ether$price)
+
+d_train <- xgb.DMatrix(data = X_training, label = Y_training)
+
+X_test <- model.matrix(f, data = new_test_ether)
+
+params_xgboost <- list(nrounds = seq(40, 250, 5),
+                     max_depth = 4,
+                     eta = seq(2, 30,5)/60,
+                     gamma = 1,
+                     colsample_bytree = 1,
+                     min_child_weight = 9,
+                     subsample =  1.0
+                     )
+
+hyper_grid_xgboost <- expand.grid(params_xgboost)
+xgb_control <- trainControl(method="cv",
+                            number = 3)
+set.seed(385)
+xgboost_tuned <- train(price~.,
+                        data=new_train_ether,
+                        trControl=xgb_control,
+                        tuneGrid=hyper_grid_xgboost,
+                        lambda=0,
+                        method="xgbTree")
+xgboost_tuned$bestTune
+```
+
+An $\eta = 0.2$ implies the model starts out as a slow learner and requires a larger number of boosting iterations to perform well, but is more robust to errors as a result.  
+
+
+```{r}
+plot(xgboost_tuned)
+```
+The previous plot shows this as the case. 
+
+```{r}
+tuned.xgb <- xgb.train(params = xgboost_tuned$bestTune,
+                       data = d_train, 
+                       nrounds = 225)
+yhat_xgboost_tuned <- predict(tuned.xgb, X_test)
+tuned_xgboost_mse <- mean((yhat_xgboost_tuned - new_test_ether$price)^2)
+tuned_xgboost_mse
+xg_boosted_mse
+```
+The hyper-paramater tuned model only offers a marginal decrease in the $MSE$ aproximately 56. 
+
 
 ```{r}
 gbm.grid <- expand.grid(interaction.depth = c(1, 4, 5, 9),
                         n.trees = (1:100)*50,
-                        n.minobsinnode = 20,
+                        n.minobsinnode = c(10, 20, 25),
                         shrinkage = 0.1)
 nrow(gbm.grid)
 
@@ -990,7 +1022,6 @@ gbm.tuned
 
 ```
 
-# 6 b)
 
 
 ```{r}
@@ -1003,10 +1034,9 @@ ggplot()+ geom_point(aes(x = y_hat_tuned, y = new_test_ether$price), color = "pu
 
 The Parameter boosted model gives a relatively tight fit around the ideal fit line. With larger residuals resulting as the price increases. 
 
-#6 c)
 
 ```{r}
-mse_tuned <- round(mean(new_test_ether$price - y_hat_tuned)^2, 2)
+mse_tuned <- round(mean((new_test_ether$price - y_hat_tuned)^2), 2)
 mse_tuned
 mse_random_forest
 bagging_mse
@@ -1015,7 +1045,7 @@ ridge_mse
 boosting_mse
 xg_boosted_mse
 ```
-The parameter tuned boosting model returns the lowest mean squared errors of  any of the models. Though I should be cautious of overfitting as I grew a large number of trees. 
+The parameter tuned boosting model returns the third lowest mean squared errors of  any of the models. Though I should be cautious of overfitting as I grew a large number of trees. 
 
 
 ```{r, cache=TRUE}
@@ -1031,36 +1061,202 @@ summary(gbm.tuned)
 
 Similiar to previous importance plots transaction history has the largest relative influence on ether price. Which makes some intuitive sense as investors might believe in the technology more as it usage increases. None of the other variables show much of a relative influence. 
 
-## Conclusion 
 
-Random forest appears to be the best model, for modeling Ether price it avoids overfitting. In addition, the model constructed used the out of bag error to determine the number of splits to consider, for predictors. So we could expect the the results to generalize well to new test data. Which is not the case for the parameter tuned gbm model having lower mean squared error. 
+Random forest appears to be the second best model, for modeling Ether price it avoids overfitting. In addition, the model constructed used the out of bag error to determine the number of splits to consider, four predictors. So we could expect the the results to generalize well to new test data. Which is not the case for the parameter tuned gbm model having higher mean squared error. 
 
-# Neural Network
+#k) Neural Network
 ```{r}
 library(keras)
 set.seed(385)
- intrain <- createDataPartition(ether_df$price, p=0.75, list=FALSE)
- keras_train <- ether_df[intrain,][, c(-5, -6, -7, -9)]
- keras_testing <- ether_df[-intrain,][, c(-5, -6, -7, -9)]
- prepros_keras <- preProcess(keras_train, method = c("center", "scale"))
- TransformedTrain <- predict(prepros_keras, keras_train)
- TransformedTest <- predict(prepros_keras, keras_testing)
+ keras_train <- ether_df %>%
+   sample_frac(.75)
+ keras_test <- ether_df %>%
+   setdiff(keras_train)
+ keras_train_data <- as.matrix(keras_train[!names(ether_df) %in% c("price","log_10_price", "day", "month", "date_utc")])
+ keras_test_data <- as.matrix(keras_test[!names(ether_df) %in% c("price","log_10_price", "day", "month", "date_utc")])
+ keras_train_labels <- as.matrix(keras_train[, "price"])
+ keras_test_labels <- as.matrix(keras_test[, "price"])
+ 
+ keras_train_data <- scale(keras_train_data)
+ keras_test_data <- scale(keras_test_data)
+
+
+ 
+ 
 build_model <- function(){
  model <- keras_model_sequential() %>%
     layer_dense(units = 64, activation="relu",
-                input_shape = dim(TransformedTrain)[2]) %>%
-     layer_dense(units = 64, activation = "relu") %>%
-     layer_dense(units = 1)
+                input_shape = dim(keras_test_data)[2]) %>%
+     layer_dense(units = 64, activation = "sigmoid") %>%
+     layer_dense(units = 64, activation = "exponential") %>%
+     layer_activation_leaky_relu(alpha = 0.01) %>%
+     layer_dense(units = 1) 
+ 
  model %>% compile(
-   loss = "mse",
-   optimizer = optimizer_rmsprop(),
-   metrics = list("mean_absolute_error")
- )
+      loss = "mse",
+    optimizer = optimizer_rmsprop(),
+      metrics = list("mean_absolute_error"))
  
  
 model
 }
 model <- build_model()
 model %>% summary()
+early_stop <- callback_early_stopping(monitor = "val_loss", patience = 68)
+epochs <- 325
+# set the X and Y 
+
+history <- model %>% fit(
+  keras_train_data,
+  keras_train_labels,
+  epochs = epochs,
+  validation_split = 0.50
+)
+
 ```
+
+
+```{r}
+library(ggplot2)
+plot(history, metrics = "mean_absolute_error", smooth = FALSE) 
+```
+
+
+The mean absolute error stabilizes around 100 epochs or iterations 
+
+
+
+```{r}
+model_2 <- build_model()
+
+model_2 %>% compile(
+  loss="mse",
+  optimizer = optimizer_rmsprop(lr = 0.022),
+  metrics = list("mean_absolute_error")
+)
+history2 <- model_2 %>% fit(
+  keras_train_data,
+  keras_train_labels,
+  epochs=100,
+  validation_split = 0.50,
+  callbacks = list(early_stop)
+)
+  
+```
+
+```{r}
+plot(history2, metrics = 'mean_absolute_error', smooth = FALSE)
+```
+
+The mean absolute errors are not as pronounced in the tuned model.
+
+```{r}
+nueral_predictions <- model %>% predict(keras_test_data)
+net_mse <- mean((keras_test_labels - nueral_predictions)^2)
+net_mse
+```
+
+A Neural Network performs decently given the complexity of the dataset. I experimented with different activation functions and numbers of layers. Finding success with interweaving layers of relu activation functions as well as exponential activiation functions. This greatly increased the performance of the model though I started having issues where the errors were not converging and took that as a sign that the vanishing gradient problem was taking place. One solution is to include a leaky relu function because it has a negative slope as x decreases it will still register a neuron as firing while a relu won't. This increased the performance of my model more significantly than adding more layers.
+
+
+#i.) extra credit
+
+
+```{r knn regression, eval=FALSE, cache=TRUE}
+library(caret)
+
+set.seed(20)
+
+train_index <- createDataPartition(ether_df$price, p = .8, list = FALSE, times = 1)
+
+head(train_index)
+
+ether_df_train <- ether_df[train_index, , drop = FALSE]
+
+ether_df_test <- ether_df[-train_index, , drop = FALSE]
+
+tr_control <- trainControl(method = "repeatedcv",
+             number = 10,
+             repeats = 3
+             )
+knn_model <-  train(price ~., data = ether_df,
+                    method = "knn",
+                    preProcess = c("center", "scale"), 
+                    trControl = tr_control, 
+                    metric = "RMSE",
+                    tuneLength = 10
+                    )
+
+knn_model
+
+knn_model$results
+
+y_hat <- predict(knn_model, newdata = ether_df)
+
+predicted <- predict(knn_model, ether_df)
+
+plot(ether_df$price, predicted)
+sqrt(sum((predicted - ether_df$price) ^ 2) / length(ether_df)) 
+
+```
+
+```{r 4)a-c, cache=TRUE}
+set.seed(385)
+
+statistic <- function(x, n=100, best=5){
+  tree_1 <- tree(price~., data = train_df)
+  pruned_tree_1 <- prune.tree(tree_1, k=10, best = best)
+  
+ return(  predict(pruned_tree_1, newdata = test_df) )
+  
+  
+  
+}
+
+ result <- boot::boot(data = train_df, statistic, R=100, sim = "ordinary")
+ 
+mean((test_df$price - result$t0)^ 2)
+
+
+```
+
+#m.) comparing all models 
+
+```{r}
+
+single_tree_fit
+lasso_mse
+ridge_mse
+bagging_mse
+mse_random_forest
+boosting_mse
+mse_tuned
+xg_boosted_mse
+tuned_xgboost_mse
+net_mse
+
+
+```
+
+The lowest $MSE$ was produced by the bagging model, followed by Random Forest, hyper-parameter tuned boosting, boosting, hyper-parameter tuned xgboost, xgboost, the neural network, lasso regression, ridge regression, and finally regression trees. 
+
+
+
+| Machine learning method | MSE     |
+|:-----------------------:|---------|
+| Bagging                 | 1023.55 |
+| Random Forest           | 1035    |
+| Tuned boosting          | 1172.63 |
+| Boosting                | 1299.22 |
+| Tuned xgboost           | 1360.19 |
+| Xgboost                 | 1415.98 |
+| Neural Network          | 3596.69 |
+| Lasso                   | 5159.67 |
+| Ridge                   | 6704.90 |
+| Regression Tree         | 8066.87 |
+
+
+#n.) Conclusion 
+
+Of all the machine learning techniques covered bagging proved the most accurate model for predicting Ether price. While tree methods generally performed better than other machine learning methods.  The techniques covered in class don't lend themselves naturally to dealing with time series data if we had covered Neural Networks in further depth I believe a neural network could perform better than all the other models. As neural networks lend themselves well with dealing with sequence data and in particular time series data one such technique is LSTM or Long short-term memory. Another possible approach might consider using lags which is out of the scope of the class, but is useful in time series modeling. 
 
